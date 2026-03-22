@@ -12,6 +12,7 @@ interface VideoStageProps {
   onSkip: () => void;
   isPlaying: boolean;
   segmentLabel: string;
+  dialogue?: string;
 }
 
 export default function VideoStage({ 
@@ -22,7 +23,8 @@ export default function VideoStage({
   onEnded, 
   onSkip, 
   isPlaying,
-  segmentLabel
+  segmentLabel,
+  dialogue
 }: VideoStageProps) {
   return (
     <div className="flex flex-col w-full h-full space-y-8 animate-in zoom-in-95 duration-1000">
@@ -38,6 +40,7 @@ export default function VideoStage({
             onEnded={onEnded}
             isPlaying={isPlaying}
             segmentLabel={segmentLabel}
+            dialogue={dialogue}
           />
         </div>
 
