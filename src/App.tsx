@@ -58,8 +58,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/oauth/google/callback" element={<GoogleOAuthCallback />} />
           <Route path="/share/:token" element={<SharedBrief />} />
+          <Route path="/" element={<Index />} />
           <Route element={<RequireAuth><AppShell /></RequireAuth>}>
-            <Route path="/" element={<Navigate to="/brief" replace />} />
             <Route path="/brief" element={<YourBrief />} />
             <Route path="/today" element={<Today />} />
             <Route path="/builder" element={<BriefingBuilder />} />
