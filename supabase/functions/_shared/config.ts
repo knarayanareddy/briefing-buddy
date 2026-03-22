@@ -6,6 +6,7 @@ export const config = {
   VEED_API_KEY: Deno.env.get("VEED_API_KEY"),
   SUPABASE_URL: Deno.env.get("SUPABASE_URL"),
   SUPABASE_ANON_KEY: Deno.env.get("SUPABASE_ANON_KEY"),
+  SUPABASE_PUBLISHABLE_KEY: Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY"),
   SUPABASE_SERVICE_ROLE_KEY: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
   AVATAR_PROVIDER: Deno.env.get("AVATAR_PROVIDER") || "fal",
   ENABLE_RUNWARE: Deno.env.get("ENABLE_RUNWARE") !== "false",
