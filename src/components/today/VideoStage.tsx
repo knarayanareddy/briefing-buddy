@@ -12,6 +12,7 @@ interface VideoStageProps {
   onSkip: () => void;
   isPlaying: boolean;
   segmentLabel: string;
+  dialogue?: string;
 }
 
 export default function VideoStage({ 
