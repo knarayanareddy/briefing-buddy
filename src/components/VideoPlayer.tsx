@@ -15,8 +15,6 @@ function isVideoUrl(url: string): boolean {
 }
 
 const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`;
-
-// Simple in-memory cache so we don't re-generate TTS for the same dialogue
 const ttsCache = new Map<string, string>();
 
 export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnded, isPlaying }: VideoPlayerProps) {
@@ -24,44 +22,75 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
   const brollVideoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const [bRollActive, setBRollActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [ttsLoading, setTtsLoading] = useState(false);
-  const [ttsReady, setTtsReady] = useState(false);
   const [showSubtitle, setShowSubtitle] = useState(false);
+  const [ttsMode, setTtsMode] = useState<"elevenlabs" | "browser">("elevenlabs");
   const prevDialogueRef = useRef<string | null>(null);
 
   const hasBRollVideo = bRollUrl && isVideoUrl(bRollUrl);
   const hasBRollImage = bRollUrl && !isVideoUrl(bRollUrl);
   const hasAvatarVideo = !!videoUrl;
 
-  // Cleanup audio when dialogue changes or component unmounts
   const cleanupAudio = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.removeAttribute("src");
       audioRef.current = null;
     }
+    if (utteranceRef.current) {
+      window.speechSynthesis.cancel();
+      utteranceRef.current = null;
+    }
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    setTtsReady(false);
     setShowSubtitle(false);
   }, []);
 
-  // Fetch TTS audio for current dialogue
+  // Speak using browser TTS
+  const speakBrowser = useCallback((text: string, onEnd: () => void) => {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.05;
+    utterance.pitch = 0.95;
+    utterance.volume = isMuted ? 0 : 1;
+
+    // Pick a good voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v =>
+      v.name.includes("Google") && v.lang.startsWith("en")
+    ) || voices.find(v => v.lang.startsWith("en") && v.localService === false)
+      || voices.find(v => v.lang.startsWith("en"));
+    if (preferred) utterance.voice = preferred;
+
+    utterance.onend = () => {
+      timerRef.current = setTimeout(onEnd, 800);
+    };
+    utterance.onerror = () => {
+      timerRef.current = setTimeout(onEnd, 800);
+    };
+
+    utteranceRef.current = utterance;
+    setShowSubtitle(true);
+    window.speechSynthesis.speak(utterance);
+  }, [isMuted]);
+
+  // Fetch ElevenLabs TTS
   useEffect(() => {
     if (!dialogue || dialogue === prevDialogueRef.current) return;
     prevDialogueRef.current = dialogue;
     cleanupAudio();
 
+    if (ttsMode === "browser") return; // Browser TTS is played on-demand, no prefetch
+
     const cacheKey = dialogue.slice(0, 200);
     if (ttsCache.has(cacheKey)) {
-      const audio = new Audio(ttsCache.get(cacheKey)!);
-      audioRef.current = audio;
-      audio.muted = isMuted;
-      setTtsReady(true);
+      audioRef.current = new Audio(ttsCache.get(cacheKey)!);
+      audioRef.current.muted = isMuted;
       return;
     }
 
@@ -80,21 +109,22 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
           body: JSON.stringify({ text: dialogue }),
         });
 
-        if (!resp.ok) throw new Error(`TTS ${resp.status}`);
+        if (!resp.ok) {
+          console.warn(`ElevenLabs TTS failed (${resp.status}), falling back to browser TTS`);
+          if (!cancelled) setTtsMode("browser");
+          return;
+        }
+
         const data = await resp.json();
         if (cancelled || !data.audioContent) return;
 
         const audioUrl = `data:audio/mpeg;base64,${data.audioContent}`;
         ttsCache.set(cacheKey, audioUrl);
-
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-        audio.muted = isMuted;
-        setTtsReady(true);
-      } catch (err) {
-        console.warn("TTS fetch failed:", err);
-        // Still allow segment to play without audio
-        setTtsReady(true);
+        audioRef.current = new Audio(audioUrl);
+        audioRef.current.muted = isMuted;
+      } catch {
+        console.warn("ElevenLabs TTS error, falling back to browser TTS");
+        if (!cancelled) setTtsMode("browser");
       } finally {
         if (!cancelled) setTtsLoading(false);
       }
@@ -102,66 +132,86 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dialogue]);
+  }, [dialogue, ttsMode]);
 
-  // Play/pause TTS audio in sync with playback state
+  // Play/pause audio in sync with playback
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    if (!isPlaying || !dialogue) return;
 
-    if (isPlaying && ttsReady) {
+    if (ttsMode === "browser") {
+      if (!isMuted) {
+        speakBrowser(dialogue, onEnded);
+      } else {
+        setShowSubtitle(true);
+        // Even when muted, auto-advance based on reading time
+        const readTimeMs = Math.max(3000, dialogue.length * 55);
+        timerRef.current = setTimeout(() => {
+          setShowSubtitle(false);
+          onEnded();
+        }, readTimeMs);
+      }
+      return () => {
+        window.speechSynthesis.cancel();
+        if (timerRef.current) clearTimeout(timerRef.current);
+      };
+    }
+
+    // ElevenLabs audio mode
+    const audio = audioRef.current;
+    if (audio) {
       audio.currentTime = 0;
       audio.muted = isMuted;
       setShowSubtitle(true);
-
       audio.play().catch(() => {});
 
-      // When audio ends, advance the segment
       const handleEnd = () => {
         setShowSubtitle(false);
-        // Give a brief pause after narration before advancing
-        timerRef.current = setTimeout(() => {
-          onEnded();
-        }, 800);
+        timerRef.current = setTimeout(onEnded, 800);
       };
       audio.addEventListener("ended", handleEnd);
       return () => {
         audio.removeEventListener("ended", handleEnd);
+        audio.pause();
       };
-    } else {
-      audio.pause();
-      setShowSubtitle(false);
+    } else if (!ttsLoading) {
+      // No audio available at all — use reading-time timer
+      setShowSubtitle(true);
+      const readTimeMs = Math.max(3000, (dialogue?.length || 50) * 55);
+      timerRef.current = setTimeout(() => {
+        setShowSubtitle(false);
+        onEnded();
+      }, readTimeMs);
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, ttsReady, isMuted]);
+  }, [isPlaying, dialogue, ttsMode, ttsLoading, isMuted]);
 
-  // Update mute state on existing audio
+  // Update mute on existing audio
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.muted = isMuted;
+    if (audioRef.current) audioRef.current.muted = isMuted;
+    if (utteranceRef.current) {
+      // Can't change volume mid-speech, but next utterance will use it
     }
   }, [isMuted]);
 
-  // Cleanup on unmount
   useEffect(() => cleanupAudio, [cleanupAudio]);
 
   // Handle avatar video playback
   useEffect(() => {
     if (avatarRef.current && videoUrl) {
-      if (isPlaying) {
-        avatarRef.current.play().catch(() => {});
-      } else {
-        avatarRef.current.pause();
-      }
+      if (isPlaying) avatarRef.current.play().catch(() => {});
+      else avatarRef.current.pause();
     }
   }, [isPlaying, videoUrl]);
 
-  // Handle b-roll video playback (when no avatar video)
+  // Handle b-roll video playback
   useEffect(() => {
     if (brollVideoRef.current && hasBRollVideo && !hasAvatarVideo) {
       if (isPlaying) {
         brollVideoRef.current.currentTime = 0;
-        brollVideoRef.current.loop = true; // Loop b-roll while TTS plays
+        brollVideoRef.current.loop = true;
         brollVideoRef.current.play().catch(() => {});
         setBRollActive(true);
       } else {
@@ -171,28 +221,18 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
     }
   }, [isPlaying, hasBRollVideo, hasAvatarVideo]);
 
-  // Handle b-roll image (Ken Burns effect while TTS plays)
+  // Handle b-roll image Ken Burns
   useEffect(() => {
     if (!hasAvatarVideo && !hasBRollVideo && hasBRollImage && isPlaying) {
       setBRollActive(true);
-      // If no TTS audio available, fall back to timer
-      if (!audioRef.current) {
-        timerRef.current = setTimeout(() => {
-          setBRollActive(false);
-          onEnded();
-        }, 8000);
-      }
     } else if (!isPlaying) {
       setBRollActive(false);
     }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [hasAvatarVideo, hasBRollVideo, hasBRollImage, isPlaying, onEnded]);
+  }, [hasAvatarVideo, hasBRollVideo, hasBRollImage, isPlaying]);
 
   return (
     <div className="relative w-full h-full rounded-2xl overflow-hidden bg-black">
-      {/* B-Roll Layer — video or image */}
+      {/* B-Roll Layer */}
       {hasBRollVideo && (
         <video
           ref={brollVideoRef}
@@ -228,7 +268,7 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
           playsInline
         />
       ) : bRollUrl ? (
-        /* Dialogue subtitle overlay for b-roll mode */
+        /* Dialogue subtitle overlay */
         <div className="absolute inset-0 z-20 flex flex-col justify-end p-8">
           {dialogue && (
             <div className={`max-w-[85%] transition-all duration-700 ${showSubtitle && isPlaying ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
@@ -240,7 +280,6 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
             </div>
           )}
           
-          {/* TTS Loading indicator */}
           {ttsLoading && isPlaying && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
               <div className="flex items-center gap-2 bg-black/60 backdrop-blur-sm rounded-full px-4 py-2 border border-white/10">
@@ -251,7 +290,6 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
           )}
         </div>
       ) : (
-        /* Empty state */
         <div className="flex items-center justify-center h-full">
           <div className="text-center space-y-2">
             <div className="w-16 h-16 mx-auto rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
@@ -265,18 +303,23 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
         </div>
       )}
 
-      {/* Mute/Unmute control */}
+      {/* Mute/Unmute + TTS mode indicator */}
       {isPlaying && (
-        <button
-          onClick={() => setIsMuted(!isMuted)}
-          className="absolute top-4 right-4 z-30 w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 flex items-center justify-center hover:bg-black/70 transition-colors"
-        >
-          {isMuted ? (
-            <VolumeX className="w-4 h-4 text-white/60" />
-          ) : (
-            <Volume2 className="w-4 h-4 text-white/60" />
+        <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+          {ttsMode === "browser" && (
+            <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest bg-black/40 rounded-full px-2 py-1">Browser TTS</span>
           )}
-        </button>
+          <button
+            onClick={() => setIsMuted(!isMuted)}
+            className="w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm border border-white/10 flex items-center justify-center hover:bg-black/70 transition-colors"
+          >
+            {isMuted ? (
+              <VolumeX className="w-4 h-4 text-white/60" />
+            ) : (
+              <Volume2 className="w-4 h-4 text-white/60" />
+            )}
+          </button>
+        </div>
       )}
     </div>
   );
