@@ -283,6 +283,7 @@ export default function Today() {
                 onSkip={() => setCurrentIdx(prev => Math.min(prev + 1, segments.length - 1))}
                 isPlaying={appState === "playing"}
                 segmentLabel={`SEGMENT_0${currentIdx + 1}`}
+                dialogue={currentSegment?.dialogue || ""}
               />
             </>
           )}
