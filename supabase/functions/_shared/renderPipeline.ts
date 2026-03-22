@@ -11,8 +11,8 @@ export interface RenderProgress {
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 /**
- * Generate a b-roll image using Lovable AI Gateway (image generation model).
- * Returns a data URL or null on failure.
+ * Generate a themed b-roll image using Lovable AI Gateway.
+ * Uses the image generation model with proper modalities parameter.
  */
 async function generateBrollImage(prompt: string): Promise<string | null> {
   const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
@@ -30,10 +30,11 @@ async function generateBrollImage(prompt: string): Promise<string | null> {
       },
       body: JSON.stringify({
         model: "google/gemini-3.1-flash-image-preview",
+        modalities: ["image", "text"],
         messages: [
           {
             role: "user",
-            content: `Generate a cinematic, professional b-roll image for a morning briefing video segment. The image should be: ${prompt}. Make it high quality, photorealistic, with cinematic lighting. Output only the image.`,
+            content: `Generate a cinematic, wide-angle 16:9 b-roll image for a professional morning briefing video segment. The visual should directly illustrate: "${prompt}". Style: photorealistic, editorial lighting, shallow depth-of-field, slightly desaturated corporate color palette. Output only the image, no text overlay.`,
           },
         ],
       }),
@@ -41,23 +42,33 @@ async function generateBrollImage(prompt: string): Promise<string | null> {
 
     if (!response.ok) {
       const errText = await response.text();
-      console.warn(`B-roll generation failed (${response.status}): ${errText.slice(0, 200)}`);
+      console.warn(`B-roll generation failed (${response.status}): ${errText.slice(0, 300)}`);
       return null;
     }
 
     const result = await response.json();
-    const content = result.choices?.[0]?.message?.content;
-    
-    // Check if the response contains an image (inline_data)
-    if (result.choices?.[0]?.message?.parts) {
-      for (const part of result.choices[0].message.parts) {
+
+    // Extract image from the response (images array format)
+    const images = result.choices?.[0]?.message?.images;
+    if (images && images.length > 0) {
+      const imageUrl = images[0]?.image_url?.url;
+      if (imageUrl) {
+        console.log(`B-roll generated successfully (${imageUrl.slice(0, 50)}...)`);
+        return imageUrl;
+      }
+    }
+
+    // Fallback: check inline_data format
+    const parts = result.choices?.[0]?.message?.parts;
+    if (parts) {
+      for (const part of parts) {
         if (part.inline_data?.data) {
           return `data:${part.inline_data.mime_type};base64,${part.inline_data.data}`;
         }
       }
     }
 
-    // Fallback: use a high-quality stock placeholder
+    console.warn("B-roll generation returned no image data");
     return null;
   } catch (e: any) {
     console.warn(`B-roll generation error: ${e.message}`);
@@ -66,17 +77,8 @@ async function generateBrollImage(prompt: string): Promise<string | null> {
 }
 
 /**
- * Generate a TTS-style dialogue summary using Lovable AI.
- * Returns a text description that could be used for audio generation.
- */
-async function generateDialogueSummary(dialogue: string, persona: string): Promise<string> {
-  return dialogue; // Pass-through for now; actual TTS would need an audio provider
-}
-
-/**
  * The core rendering pipeline.
- * Processes a limited number of segments for a given job.
- * Uses Lovable AI for b-roll when external providers aren't available.
+ * Processes segments for a given job.
  */
 export async function processNextSegments(
   supabase: SupabaseClient,
@@ -108,7 +110,6 @@ export async function processNextSegments(
 
   // 3. Process each segment
   for (const seg of (segments || [])) {
-    // Mark as rendering
     await supabase
       .from("rendered_segments")
       .update({ status: "rendering" })
@@ -117,10 +118,11 @@ export async function processNextSegments(
     try {
       let bRollUrl: string | null = null;
 
-      // B-Roll generation
+      // Build a themed prompt from dialogue + any explicit b-roll prompt
       const brollPrompt = seg.runware_b_roll_prompt || seg.dialogue;
+
+      // Try Runware first if configured
       if (config.ENABLE_RUNWARE && config.RUNWARE_API_KEY && brollPrompt) {
-        // Use Runware if configured
         try {
           const { runwareProvider } = await import("./providers/runware.ts");
           const res = await runwareProvider.generateImage({
@@ -129,23 +131,24 @@ export async function processNextSegments(
           });
           bRollUrl = res.url;
         } catch (e: any) {
-          console.warn(`Runware b-roll failed: ${e.message}, trying AI fallback`);
+          console.warn(`Runware b-roll failed: ${e.message}`);
         }
       }
 
-      // Fallback: Lovable AI for b-roll
+      // Lovable AI b-roll generation (themed to content)
       if (!bRollUrl && brollPrompt) {
         bRollUrl = await generateBrollImage(brollPrompt);
       }
 
-      // Final fallback: use a contextual placeholder
+      // Final fallback: themed placeholder based on segment content
       if (!bRollUrl) {
-        bRollUrl = `https://picsum.photos/seed/seg${seg.segment_id}/1280/720`;
+        // Use a deterministic seed from the dialogue for consistency
+        const seed = encodeURIComponent((brollPrompt || "briefing").slice(0, 30));
+        bRollUrl = `https://picsum.photos/seed/${seed}/1280/720`;
       }
 
-      // Avatar video generation
+      // Avatar video generation via Fal.ai
       let avatarUrl: string | null = null;
-
       if (config.FAL_KEY) {
         try {
           const { falAvatarProvider } = await import("./providers/falAvatar.ts");
@@ -154,9 +157,12 @@ export async function processNextSegments(
             personaTitle,
           });
           avatarUrl = avatarRes.url;
+          console.log(`Avatar video generated for segment ${seg.segment_id}`);
         } catch (e: any) {
-          console.warn(`Fal avatar failed: ${e.message}`);
+          console.warn(`Fal avatar failed for segment ${seg.segment_id}: ${e.message}`);
         }
+      } else {
+        console.warn("FAL_KEY not configured, skipping avatar video generation");
       }
 
       // Mark segment complete
