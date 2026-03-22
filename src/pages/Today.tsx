@@ -24,7 +24,7 @@ import BriefControls from "@/components/today/BriefControls";
 import BriefEmptyState from "@/components/today/BriefEmptyState";
 import ShareDialog from "@/components/share/ShareDialog";
 
-type AppState = "idle" | "generating" | "script_ready" | "rendering" | "ready" | "playing";
+type AppState = "idle" | "generating" | "script_ready" | "rendering" | "ready" | "playing" | "paused";
 
 export default function Today() {
   const [searchParams] = useSearchParams();
@@ -38,12 +38,12 @@ export default function Today() {
   const [scriptId, setScriptId] = useState<string | null>(null);
   const [scriptJson, setScriptJson] = useState<any>(null);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [_jobStatus, setJobStatus] = useState<string | null>(null);
   const [progress, setProgress] = useState<any>(null);
   const [segments, setSegments] = useState<SegmentStatus[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [errors, setErrors] = useState<string[]>([]);
-  const [apiKey, setApiKey] = useState("");
+  const [_errors, setErrors] = useState<string[]>([]);
+  const [apiKey] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -174,8 +174,7 @@ export default function Today() {
         setAppState("script_ready");
       } else {
         if (!apiKey && !hasSession) throw new Error("Authentication required for live mode");
-        if (apiKey) setInternalApiKey(apiKey);
-        
+
         const assembled = await assembleUserData();
         const res = await generateScript({ 
           user_data: assembled.user_data,
@@ -236,6 +235,7 @@ export default function Today() {
   const handleVideoEnd = () => {
     if (currentIdx < segments.length - 1) {
       setCurrentIdx(currentIdx + 1);
+      // Stay playing — auto-advance to next segment
     } else {
       setAppState("ready");
     }
@@ -244,6 +244,34 @@ export default function Today() {
   const handlePlay = () => {
     setAppState("playing");
     setCurrentIdx(0);
+  };
+
+  const handleTogglePause = () => {
+    if (appState === "playing") {
+      setAppState("paused");
+    } else if (appState === "paused") {
+      setAppState("playing");
+    }
+  };
+
+  const handlePrev = () => {
+    setCurrentIdx(prev => Math.max(prev - 1, 0));
+  };
+
+  const handleNext = () => {
+    setCurrentIdx(prev => Math.min(prev + 1, segments.length - 1));
+  };
+
+  const handleSegmentSelect = (idx: number) => {
+    setCurrentIdx(idx);
+    // If we're in ready state and user clicks a segment, pause there for review
+    if (appState === "ready") {
+      setAppState("paused");
+    }
+  };
+
+  const handleResume = () => {
+    setAppState("playing");
   };
 
   const currentSegment = segments[currentIdx];
@@ -262,7 +290,7 @@ export default function Today() {
               segment_type: (scriptJson as any)?.timeline_segments?.[i]?.segment_type
             }))} 
             currentIndex={currentIdx} 
-            onSelect={setCurrentIdx} 
+            onSelect={handleSegmentSelect} 
           />
         </div>
 
@@ -283,8 +311,15 @@ export default function Today() {
                 onEnded={handleVideoEnd}
                 onSkip={() => setCurrentIdx(prev => Math.min(prev + 1, segments.length - 1))}
                 isPlaying={appState === "playing"}
+                isPaused={appState === "paused"}
+                onTogglePause={handleTogglePause}
+                onPrev={handlePrev}
+                onNext={handleNext}
+                onResume={handleResume}
                 segmentLabel={`SEGMENT_0${currentIdx + 1}`}
                 dialogue={currentSegment?.dialogue || ""}
+                currentIndex={currentIdx}
+                totalSegments={segments.length}
               />
             </>
           )}
@@ -309,6 +344,11 @@ export default function Today() {
           onSync={handleSync}
           isSyncing={isSyncing}
           onShare={() => setIsShareOpen(true)}
+          onTogglePause={handleTogglePause}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          currentIndex={currentIdx}
+          totalSegments={segments.length}
         />
       )}
 
