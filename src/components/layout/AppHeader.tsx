@@ -46,7 +46,7 @@ export default function AppHeader({ onSync }: { onSync: () => void }) {
         {/* Subtle Brand or Page Title */}
         <div className="flex items-center gap-2 text-white/40">
            <Radio className="w-4 h-4 text-indigo-500 animate-pulse" />
-           <span className="text-[10px] uppercase font-black tracking-[0.2em]">Quantum Logistics</span>
+           <span className="text-[10px] uppercase font-black tracking-[0.2em]">MY Morning Brief</span>
         </div>
       </div>
 
