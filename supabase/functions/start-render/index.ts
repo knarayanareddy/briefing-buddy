@@ -33,7 +33,7 @@ serve(async (req) => {
   }
 
   try {
-    const { script_id } = await req.json();
+    const { script_id, force } = await req.json();
     if (!script_id) throw new Error("script_id is required");
 
     const supabase = createClient(
