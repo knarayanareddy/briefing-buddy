@@ -16,7 +16,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { mockScriptJson, mockVideoUrls } from "@/lib/mockData";
 import { Terminal, Shield } from "lucide-react";
 import { useDevMode } from "@/lib/devMode";
-import { useDevMode } from "@/lib/devMode";
 
 import SegmentTimeline from "@/components/today/SegmentTimeline";
 import VideoStage from "@/components/today/VideoStage";
