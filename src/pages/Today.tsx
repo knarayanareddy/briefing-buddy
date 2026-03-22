@@ -14,13 +14,8 @@ import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { mockScriptJson, mockVideoUrls } from "@/lib/mockData";
-import { 
-  Accordion, 
-  AccordionContent, 
-  AccordionItem, 
-  AccordionTrigger 
-} from "@/components/ui/accordion";
-import { Database, Terminal, Shield, Zap, Activity } from "lucide-react";
+import { Terminal, Shield } from "lucide-react";
+import { useDevMode } from "@/lib/devMode";
 import { useDevMode } from "@/lib/devMode";
 
 import SegmentTimeline from "@/components/today/SegmentTimeline";
