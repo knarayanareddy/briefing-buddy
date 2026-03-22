@@ -1,3 +1,9 @@
+import seg1Asset from "@/assets/briefing-seg1.mp4.asset.json";
+import seg2Asset from "@/assets/briefing-seg2.mp4.asset.json";
+import seg3Asset from "@/assets/briefing-seg3.mp4.asset.json";
+
+export const mockVideoUrls = [seg1Asset.url, seg2Asset.url, seg3Asset.url];
+
 export const mockUserPreferences = {
   persona: "Cyberpunk Executive",
   focus_areas: ["Security", "AI Trends", "Morning Schedule"],
