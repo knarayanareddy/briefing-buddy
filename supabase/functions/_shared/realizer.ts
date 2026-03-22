@@ -1,16 +1,23 @@
 import { SegmentPlan } from "./planner.ts";
 
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
 /**
  * Tightened realizer — one segment at a time.
  * ui_action_card is ALWAYS post-overwritten from the plan. The LLM cannot mutate it.
  * runware_b_roll_prompt is forced null when b_roll_hint is null.
+ * 
+ * Uses Lovable AI Gateway (powered by LOVABLE_API_KEY) instead of direct OpenAI calls.
  */
 export async function realizeSegment(
   segmentId: number,
   plan: SegmentPlan,
   persona: string,
-  openaiKey: string
+  _apiKey: string // kept for signature compat, ignored — uses LOVABLE_API_KEY
 ): Promise<any> {
+  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
+
   const systemPrompt = `
 You are a concise, professional briefing script writer.
 Persona: ${persona}
@@ -38,30 +45,35 @@ STRICT RULES:
     b_roll_hint: plan.b_roll_hint,
   };
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch(LOVABLE_AI_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${openaiKey}`,
+      "Authorization": `Bearer ${lovableApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "google/gemini-3-flash-preview",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: JSON.stringify(userPayload) },
       ],
       temperature: 0.2,
-      response_format: { type: "json_object" },
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`OpenAI error (${response.status}): ${errText.slice(0, 200)}`);
+    if (response.status === 429) throw new Error("AI rate limit exceeded. Please try again shortly.");
+    if (response.status === 402) throw new Error("AI credits exhausted. Please add funds to your workspace.");
+    throw new Error(`AI gateway error (${response.status}): ${errText.slice(0, 200)}`);
   }
 
   const result = await response.json();
-  const parsed = JSON.parse(result.choices[0].message.content);
+  const content = result.choices[0].message.content;
+  
+  // Strip markdown code fences if present
+  const jsonStr = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  const parsed = JSON.parse(jsonStr);
 
   // ALWAYS overwrite ui_action_card — LLM output is discarded entirely for this field
   parsed.ui_action_card = plan.ui_action_suggestion;
@@ -81,16 +93,19 @@ export async function repairSegment(
   badOutput: string,
   validationError: string,
   persona: string,
-  openaiKey: string
+  _apiKey: string // kept for signature compat, ignored
 ): Promise<any> {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
+
+  const response = await fetch(LOVABLE_AI_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${openaiKey}`,
+      "Authorization": `Bearer ${lovableApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "google/gemini-3-flash-preview",
       messages: [
         {
           role: "system",
@@ -99,14 +114,19 @@ export async function repairSegment(
         { role: "user", content: `Previous output:\n${badOutput}\n\nValidation error:\n${validationError}` },
       ],
       temperature: 0,
-      response_format: { type: "json_object" },
     }),
   });
 
-  if (!response.ok) throw new Error(`OpenAI repair error: ${response.status}`);
+  if (!response.ok) {
+    if (response.status === 429) throw new Error("AI rate limit exceeded during repair.");
+    if (response.status === 402) throw new Error("AI credits exhausted during repair.");
+    throw new Error(`AI repair error: ${response.status}`);
+  }
 
   const result = await response.json();
-  const parsed = JSON.parse(result.choices[0].message.content);
+  const content = result.choices[0].message.content;
+  const jsonStr = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  const parsed = JSON.parse(jsonStr);
   parsed.ui_action_card = plan.ui_action_suggestion;
   if (!plan.b_roll_hint) parsed.runware_b_roll_prompt = null;
   return parsed;
