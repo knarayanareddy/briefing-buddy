@@ -15,6 +15,7 @@ import ReadingList from "./pages/ReadingList.tsx";
 import History from "./pages/History.tsx";
 import Settings from "./pages/Settings.tsx";
 import YourBrief from "./pages/YourBrief.tsx";
+import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import SharedBrief from "./pages/SharedBrief.tsx";
 
