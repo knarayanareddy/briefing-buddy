@@ -8,7 +8,7 @@ import {
 import { 
   getUserSettings, updateUserSettings, getUsageStats, getSystemKeyStatus, 
   getConnectorCredentialStatus, listAuditEvents, listSessions, touchSession,
-  type UserSettings, type UsageStats, type SystemKeyStatus, type ConnectorCredentialStatus, type AuditEvent, type UserSession
+  type UserSettings, type UsageStats, type SystemKeyStatus, type ConnectorCredentialStatus, type AuditEvent, type UserSession,
 } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -261,7 +261,7 @@ const APIKeysTab = () => {
       .then(([u, s, c]) => {
         setUsage(u);
         setSystems(s);
-        setConnectors(c.providers);
+        setConnectors(Array.isArray(c) ? c : (c as any)?.providers || []);
       })
       .finally(() => setLoading(false));
   }, []);

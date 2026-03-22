@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { getProfiles, upsertProfile, getModuleCatalog, previewPlan, getConnectorStatus } from "@/lib/api";
+import { getProfiles, upsertProfile, getModuleCatalog, previewPlan, getConnectorStatus, type BriefingProfile } from "@/lib/api";
 import { toast } from "sonner";
 import { Plus, Settings, Rocket, Database, Activity, Clock, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -168,7 +168,7 @@ export default function BriefingBuilder() {
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
             }
           ];
-          const newProfs = await Promise.all(SEED_PROFILES.map(p => upsertProfile(p)));
+          const newProfs = await Promise.all(SEED_PROFILES.map(p => upsertProfile(p as Partial<BriefingProfile>)));
           profs = newProfs;
           toast.success("Initialized default intelligence profiles.");
         } catch (err: any) {

@@ -128,6 +128,42 @@ export interface UserSettings {
   updated_at: string;
 }
 
+export interface UsageStats {
+  generate_percent: number;
+  generate_count: number;
+  generate_limit: number;
+  render_percent: number;
+  render_count: number;
+  render_limit: number;
+  [key: string]: any;
+}
+
+export type SystemKeyStatus = Record<string, boolean>;
+
+export interface ConnectorCredentialStatus {
+  provider: string;
+  status: string;
+  configured: boolean;
+  has_secret?: boolean;
+}
+
+export interface AuditEvent {
+  id: string;
+  event_type: string;
+  created_at: string;
+  metadata?: Record<string, any>;
+}
+
+export interface UserSession {
+  session_id: string;
+  user_agent: string;
+  device_label: string;
+  ip: string;
+  location_text: string;
+  last_seen_at: string;
+  created_at: string;
+}
+
 // --- Briefing Core Actions ---
 
 /**
