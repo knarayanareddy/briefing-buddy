@@ -41,11 +41,8 @@ export default function Sidebar() {
         </div>
         <div className="flex flex-col">
           <h1 className="text-sm font-bold tracking-tight text-white leading-tight">
-            Silent Architect
+            MY Morning Brief
           </h1>
-          <p className="text-[9px] uppercase font-black tracking-[0.2em] text-muted-foreground opacity-50">
-            AI ORCHESTRATION
-          </p>
         </div>
       </div>
 
