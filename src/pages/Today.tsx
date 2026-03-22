@@ -276,6 +276,12 @@ export default function Today() {
 
   const currentSegment = segments[currentIdx];
 
+  // Fallback to curated b-roll when DB segment has no image or a generic placeholder
+  const resolvedBRollUrl = (() => {
+    const url = currentSegment?.b_roll_image_url;
+    if (url && !url.includes("picsum.photos")) return url;
+    return mockBrollBySegment[currentIdx] || mockBrollBySegment[currentIdx % mockBrollBySegment.length];
+  })();
   return (
     <div className="flex flex-col h-full bg-[#0B0E14] overflow-hidden animate-in fade-in duration-1000">
       
@@ -305,7 +311,7 @@ export default function Today() {
             <>
               <VideoStage
                 videoUrl={currentSegment?.avatar_video_url}
-                bRollUrl={currentSegment?.b_roll_image_url}
+                bRollUrl={resolvedBRollUrl}
                 status={currentSegment?.status}
                 progress={progress}
                 onEnded={handleVideoEnd}
