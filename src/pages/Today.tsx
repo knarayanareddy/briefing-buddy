@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { mockScriptJson, mockVideoUrls } from "@/lib/mockData";
+import { mockScriptJson, mockVideoUrls, mockBrollBySegment } from "@/lib/mockData";
 import { Terminal, Shield } from "lucide-react";
 import { useDevMode } from "@/lib/devMode";
 
@@ -214,7 +214,7 @@ export default function Today() {
             ...s, 
             status: "complete",
             avatar_video_url: null,
-            b_roll_image_url: mockVideoUrls[i % mockVideoUrls.length],
+            b_roll_image_url: mockBrollBySegment[i] || mockVideoUrls[i % mockVideoUrls.length],
           } : s));
           setProgress({ percent_complete: Math.round(((i + 1) / segments.length) * 100), complete: i + 1, total: segments.length });
         }

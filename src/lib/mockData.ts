@@ -14,6 +14,20 @@ export const mockVideoUrls = [
   brollCalendar.url,
 ];
 
+/** Maps each segment index (0–9) to the most relevant b-roll video */
+export const mockBrollBySegment = [
+  brollMorning.url,    // 0 opening
+  brollSecurity.url,   // 1 security
+  brollMarket.url,     // 2 market
+  brollAI.url,         // 3 ai_insights
+  brollDev.url,        // 4 engineering
+  brollMorning.url,    // 5 email_item
+  brollMarket.url,     // 6 partnerships
+  brollDev.url,        // 7 team_updates
+  brollSecurity.url,   // 8 ops_alert
+  brollCalendar.url,   // 9 closing
+];
+
 export const mockUserPreferences = {
   persona: "Cyberpunk Executive",
   focus_areas: ["Security", "AI Trends", "Markets", "Engineering", "Schedule"],
