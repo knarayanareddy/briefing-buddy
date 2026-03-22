@@ -311,7 +311,7 @@ export default function Today() {
             <>
               <VideoStage
                 videoUrl={currentSegment?.avatar_video_url}
-                bRollUrl={currentSegment?.b_roll_image_url}
+                bRollUrl={resolvedBRollUrl}
                 status={currentSegment?.status}
                 progress={progress}
                 onEnded={handleVideoEnd}
