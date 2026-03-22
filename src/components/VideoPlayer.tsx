@@ -9,66 +9,100 @@ interface VideoPlayerProps {
   isPlaying: boolean;
 }
 
-/**
- * VideoPlayer — plays avatar video when available, otherwise
- * renders a cinematic b-roll visual briefing with Ken Burns effect
- * and auto-advances after a set duration.
- */
+function isVideoUrl(url: string): boolean {
+  return url.endsWith(".mp4") || url.endsWith(".webm") || url.endsWith(".mov") || url.includes("/broll-");
+}
+
 export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnded, isPlaying }: VideoPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const avatarRef = useRef<HTMLVideoElement>(null);
+  const brollVideoRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [bRollActive, setBRollActive] = useState(false);
 
-  // Handle real video playback
+  const hasBRollVideo = bRollUrl && isVideoUrl(bRollUrl);
+  const hasBRollImage = bRollUrl && !isVideoUrl(bRollUrl);
+  const hasAvatarVideo = !!videoUrl;
+
+  // Handle avatar video playback
   useEffect(() => {
-    if (videoRef.current && videoUrl) {
+    if (avatarRef.current && videoUrl) {
       if (isPlaying) {
-        videoRef.current.play().catch(() => {});
+        avatarRef.current.play().catch(() => {});
       } else {
-        videoRef.current.pause();
+        avatarRef.current.pause();
       }
     }
   }, [isPlaying, videoUrl]);
 
-  // Handle b-roll-only auto-advance (when no video exists)
+  // Handle b-roll video playback (when no avatar video)
   useEffect(() => {
-    if (!videoUrl && bRollUrl && isPlaying) {
+    if (brollVideoRef.current && hasBRollVideo && !hasAvatarVideo) {
+      if (isPlaying) {
+        brollVideoRef.current.currentTime = 0;
+        brollVideoRef.current.play().catch(() => {});
+        setBRollActive(true);
+      } else {
+        brollVideoRef.current.pause();
+        setBRollActive(false);
+      }
+    }
+  }, [isPlaying, hasBRollVideo, hasAvatarVideo]);
+
+  // Handle b-roll image auto-advance (when no video at all)
+  useEffect(() => {
+    if (!hasAvatarVideo && !hasBRollVideo && hasBRollImage && isPlaying) {
       setBRollActive(true);
-      // Auto-advance after 8 seconds for b-roll segments
       timerRef.current = setTimeout(() => {
         setBRollActive(false);
         onEnded();
       }, 8000);
-    } else {
+    } else if (!isPlaying) {
       setBRollActive(false);
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [videoUrl, bRollUrl, isPlaying, onEnded]);
+  }, [hasAvatarVideo, hasBRollVideo, hasBRollImage, isPlaying, onEnded]);
 
-  const hasBRollOnly = !videoUrl && bRollUrl;
+  // When b-roll video ends (and no avatar), advance segment
+  const handleBRollVideoEnd = () => {
+    if (!hasAvatarVideo) {
+      setBRollActive(false);
+      onEnded();
+    }
+  };
 
   return (
     <div className="relative w-full h-full rounded-2xl overflow-hidden bg-black">
-      {/* B-Roll Background — full opacity when it's the main visual */}
-      {bRollUrl && (
+      {/* B-Roll Layer — video or image */}
+      {hasBRollVideo && (
+        <video
+          ref={brollVideoRef}
+          src={bRollUrl}
+          className={`absolute inset-0 w-full h-full object-cover ${hasAvatarVideo ? "opacity-30" : "opacity-100"}`}
+          muted
+          playsInline
+          onEnded={handleBRollVideoEnd}
+        />
+      )}
+      {hasBRollImage && (
         <div
           className={`absolute inset-0 bg-cover bg-center transition-transform duration-[8000ms] ease-linear ${
             bRollActive ? "scale-110" : "scale-100"
-          } ${videoUrl ? "opacity-30" : "opacity-100"}`}
+          } ${hasAvatarVideo ? "opacity-30" : "opacity-100"}`}
           style={{ backgroundImage: `url(${bRollUrl})` }}
         />
       )}
 
-      {/* Cinematic overlay for b-roll mode */}
-      {hasBRollOnly && (
+      {/* Cinematic gradient overlay */}
+      {!hasAvatarVideo && (bRollUrl) && (
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/40 z-10" />
       )}
 
-      {videoUrl ? (
+      {/* Avatar video (primary) */}
+      {hasAvatarVideo ? (
         <video
-          ref={videoRef}
+          ref={avatarRef}
           src={videoUrl}
           className="relative z-10 w-full h-full object-contain"
           onEnded={onEnded}
@@ -76,10 +110,10 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
           playsInline
         />
       ) : bRollUrl ? (
-        // B-roll visual briefing mode — no "not rendered" message
+        /* Dialogue overlay for b-roll mode */
         <div className="absolute inset-0 z-20 flex flex-col justify-end p-8">
           {dialogue && (
-            <div className={`max-w-[80%] transition-opacity duration-700 ${bRollActive ? "opacity-100" : "opacity-0"}`}>
+            <div className={`max-w-[80%] transition-opacity duration-700 ${isPlaying ? "opacity-100" : "opacity-0"}`}>
               <p className="text-white text-base leading-relaxed font-medium drop-shadow-lg">
                 "{dialogue}"
               </p>
@@ -87,6 +121,7 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
           )}
         </div>
       ) : (
+        /* Empty state */
         <div className="flex items-center justify-center h-full">
           <div className="text-center space-y-2">
             <div className="w-16 h-16 mx-auto rounded-full bg-white/5 border border-white/10 flex items-center justify-center">

@@ -1,71 +1,135 @@
-import seg1Asset from "@/assets/briefing-seg1.mp4.asset.json";
-import seg2Asset from "@/assets/briefing-seg2.mp4.asset.json";
-import seg3Asset from "@/assets/briefing-seg3.mp4.asset.json";
+import brollMorning from "@/assets/broll-morning-overview.mp4.asset.json";
+import brollSecurity from "@/assets/broll-security-ops.mp4.asset.json";
+import brollMarket from "@/assets/broll-market-briefing.mp4.asset.json";
+import brollDev from "@/assets/broll-dev-workspace.mp4.asset.json";
+import brollAI from "@/assets/broll-ai-neural.mp4.asset.json";
+import brollCalendar from "@/assets/broll-calendar-plan.mp4.asset.json";
 
-export const mockVideoUrls = [seg1Asset.url, seg2Asset.url, seg3Asset.url];
+export const mockVideoUrls = [
+  brollMorning.url,
+  brollSecurity.url,
+  brollMarket.url,
+  brollDev.url,
+  brollAI.url,
+  brollCalendar.url,
+];
 
 export const mockUserPreferences = {
   persona: "Cyberpunk Executive",
-  focus_areas: ["Security", "AI Trends", "Morning Schedule"],
+  focus_areas: ["Security", "AI Trends", "Markets", "Engineering", "Schedule"],
 };
 
 export const mockUserData = {
   calendar: [
     { id: "cal_1", title: "Quarterly Security Review", time: "09:00 AM" },
-    { id: "cal_2", title: "Sync with Hackathon Team", time: "02:00 PM" },
+    { id: "cal_2", title: "Board Strategy Session", time: "11:00 AM" },
+    { id: "cal_3", title: "Sync with Hackathon Team", time: "02:00 PM" },
   ],
   tasks: [
     { id: "task_1", title: "Review RAG Pipeline Docs", status: "pending" },
     { id: "task_2", title: "Update GitHub Secret Redaction", status: "urgent" },
+    { id: "task_3", title: "Approve Q4 Budget Forecast", status: "pending" },
   ],
   slack_mentions: [
     { id: "slack_1", from: "Sarah (Hackathon Org)", message: "The render job is failing for segment 4." },
+    { id: "slack_2", from: "Dev Ops Channel", message: "Prod deploy completed — 3 services updated." },
   ],
 };
 
 export const mockScriptJson = {
   script_metadata: {
     persona_applied: "Cyberpunk Executive",
-    total_estimated_segments: 3,
+    total_estimated_segments: 6,
   },
   timeline_segments: [
     {
       segment_id: 1,
-      dialogue: "Good morning, Executive. Your security perimeter is stable, but we have a few critical updates for your morning schedule.",
-      grounding_source_id: "cal_1",
-      runware_b_roll_prompt: "Cyberpunk digital city skyline, neon lights, rainy atmosphere, 8k resolution",
+      segment_type: "opening",
+      dialogue: "Good morning, Executive. It's 7:14 AM — skies are clear, markets are pre-positioning, and your perimeter is stable. Here's what demands your attention today.",
+      grounding_source_id: "system_status",
+      runware_b_roll_prompt: "Aerial dawn cityscape with golden light on glass towers",
       ui_action_card: {
         is_active: true,
-        card_type: "calendar_join",
-        title: "Join Security Review",
-        action_button_text: "Join Now",
-        action_payload: "https://zoom.us/j/123456789",
+        card_type: "summary",
+        title: "Morning Situation Report",
+        action_button_text: "View Full Brief",
+        action_payload: "/your-brief",
+        metadata: { threat_level: "LOW", systems_online: 47, alerts_pending: 3 },
       },
     },
     {
       segment_id: 2,
-      dialogue: "Sarah from the Hackathon team mentioned a failure in the render job. I've flagged this for your immediate review.",
-      grounding_source_id: "slack_1",
-      runware_b_roll_prompt: "Close up of a futuristic server rack with pulsing blue data lines",
+      segment_type: "security",
+      dialogue: "Two critical vulnerabilities were flagged overnight in the authentication layer. The SOC team has patched CVE-2026-1847 but CVE-2026-1903 requires your sign-off before deployment to production.",
+      grounding_source_id: "security_feed",
+      runware_b_roll_prompt: "Cybersecurity operations center with monitoring screens",
       ui_action_card: {
         is_active: true,
-        card_type: "email_reply",
-        title: "Reply to Sarah",
-        action_button_text: "Draft Reply",
-        action_payload: "mailto:sarah@example.com",
+        card_type: "approval",
+        title: "Approve Security Patch",
+        action_button_text: "Review & Approve",
+        action_payload: "https://security.internal/patch/CVE-2026-1903",
+        metadata: { severity: "CRITICAL", cve: "CVE-2026-1903", affected_services: 3 },
       },
     },
     {
       segment_id: 3,
-      dialogue: "Finally, your RAG pipeline documentation is ready for review. This will be the focus of your afternoon session.",
-      grounding_source_id: "task_1",
-      runware_b_roll_prompt: "Holographic data visualization of a neural network being organized",
+      segment_type: "market",
+      dialogue: "S&P futures are up 0.7% on strong earnings from the semiconductor sector. Your portfolio exposure to AI infrastructure is performing well — up 2.3% pre-market. The Q4 budget forecast is ready for your review.",
+      grounding_source_id: "market_feed",
+      runware_b_roll_prompt: "Conference room with financial charts on large display",
       ui_action_card: {
         is_active: true,
         card_type: "link_open",
-        title: "Open Documentation",
-        action_button_text: "View Docs",
-        action_payload: "https://github.com/knarayanareddy/morning-briefing-bot",
+        title: "Q4 Budget Forecast",
+        action_button_text: "Open Forecast",
+        action_payload: "https://finance.internal/q4-forecast",
+        metadata: { sp500_change: "+0.7%", portfolio_change: "+2.3%", sector: "AI Infrastructure" },
+      },
+    },
+    {
+      segment_id: 4,
+      segment_type: "engineering",
+      dialogue: "Three pull requests need your review — the RAG pipeline refactor from Chen, the auth middleware update from Priya, and the monitoring dashboard overhaul. Sarah also flagged a render pipeline failure that needs triage.",
+      grounding_source_id: "github_feed",
+      runware_b_roll_prompt: "Developer workspace with code editors and GitHub notifications",
+      ui_action_card: {
+        is_active: true,
+        card_type: "link_open",
+        title: "Review Pull Requests",
+        action_button_text: "Open GitHub",
+        action_payload: "https://github.com/org/repo/pulls",
+        metadata: { pending_prs: 3, authors: ["Chen", "Priya", "DevOps"], priority_pr: "RAG Pipeline" },
+      },
+    },
+    {
+      segment_id: 5,
+      segment_type: "ai_insights",
+      dialogue: "Your neural model training run completed at 3:47 AM. Accuracy improved to 94.2%, up from 91.8% in the previous iteration. The team recommends promoting this model to staging for A/B testing this week.",
+      grounding_source_id: "ai_pipeline",
+      runware_b_roll_prompt: "Neural network visualization with flowing data particles",
+      ui_action_card: {
+        is_active: true,
+        card_type: "approval",
+        title: "Promote Model to Staging",
+        action_button_text: "Approve Promotion",
+        action_payload: "https://ml.internal/models/v4.2/promote",
+        metadata: { model_version: "v4.2", accuracy: "94.2%", improvement: "+2.4%", recommendation: "promote" },
+      },
+    },
+    {
+      segment_id: 6,
+      segment_type: "closing",
+      dialogue: "Your first meeting is the Security Review at 9 AM, followed by the Board Strategy Session at 11. I've blocked 30 minutes of focus time before each. That's your briefing — execute with precision.",
+      grounding_source_id: "cal_1",
+      runware_b_roll_prompt: "Executive calendar on tablet with coffee, morning planning",
+      ui_action_card: {
+        is_active: true,
+        card_type: "calendar_join",
+        title: "Join Security Review",
+        action_button_text: "Join at 9:00 AM",
+        action_payload: "https://zoom.us/j/123456789",
+        metadata: { next_meeting: "Security Review", time: "09:00 AM", prep_time: "30 min" },
       },
     },
   ],
