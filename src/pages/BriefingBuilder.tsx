@@ -168,7 +168,7 @@ export default function BriefingBuilder() {
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
             }
           ];
-          const newProfs = await Promise.all(SEED_PROFILES.map(p => upsertProfile(p)));
+          const newProfs = await Promise.all(SEED_PROFILES.map(p => upsertProfile(p as Partial<BriefingProfile>)));
           profs = newProfs;
           toast.success("Initialized default intelligence profiles.");
         } catch (err: any) {

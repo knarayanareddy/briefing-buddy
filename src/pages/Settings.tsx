@@ -261,7 +261,7 @@ const APIKeysTab = () => {
       .then(([u, s, c]) => {
         setUsage(u);
         setSystems(s);
-        setConnectors(c.providers);
+        setConnectors(Array.isArray(c) ? c : (c as any)?.providers || []);
       })
       .finally(() => setLoading(false));
   }, []);

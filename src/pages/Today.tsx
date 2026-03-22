@@ -122,7 +122,7 @@ export default function Today() {
             setSegments(status.segments);
             if (status.progress) setProgress(status.progress);
             
-            if (status.status === "queued" || status.status === "rendering") {
+            if ((status.status as string) === "queued" || status.status === "rendering") {
               setAppState("rendering");
               startPolling(activeJobId);
             } else {

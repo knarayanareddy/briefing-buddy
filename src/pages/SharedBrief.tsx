@@ -173,11 +173,11 @@ export default function SharedBrief() {
          {/* SIDEBAR */}
          <div className="w-96 shrink-0 bg-[#12141A] border-l border-white/5 flex flex-col min-h-0 relative">
             <div className="absolute inset-0 flex flex-col">
-               <SegmentTimeline 
-                 segments={segments}
-                 activeIndex={activeSegmentIndex}
-                 onSeek={handleSeek}
-               />
+                <SegmentTimeline 
+                  segments={segments}
+                  currentIndex={activeSegmentIndex}
+                  onSelect={handleSeek}
+                />
             </div>
          </div>
       </div>
