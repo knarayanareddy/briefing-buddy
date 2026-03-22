@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { mockScriptJson } from "@/lib/mockData";
+import { mockScriptJson, mockVideoUrls } from "@/lib/mockData";
 import { 
   Accordion, 
   AccordionContent, 
