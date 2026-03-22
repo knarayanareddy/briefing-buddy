@@ -73,21 +73,24 @@ serve(async (req) => {
     const segments = script.timeline_segments;
 
     // 1b. Check for existing active job (Idempotency)
-    const { data: existingJob } = await supabase
-      .from("render_jobs")
-      .select("id, status")
-      .eq("script_id", script_id)
-      .eq("user_id", userId)
-      .in("status", ["queued", "rendering", "complete"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // 1b. Check for existing active job (Idempotency) — skip if force=true
+    if (!force) {
+      const { data: existingJob } = await supabase
+        .from("render_jobs")
+        .select("id, status")
+        .eq("script_id", script_id)
+        .eq("user_id", userId)
+        .in("status", ["queued", "rendering"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (existingJob) {
-      console.log(`Reusing existing job ${existingJob.id} for script ${script_id}`);
-      return new Response(JSON.stringify({ job_id: existingJob.id, status: existingJob.status, reused: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (existingJob) {
+        console.log(`Reusing existing in-progress job ${existingJob.id} for script ${script_id}`);
+        return new Response(JSON.stringify({ job_id: existingJob.id, status: existingJob.status, reused: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // 2. Create/Initialize render job (Atomic)
