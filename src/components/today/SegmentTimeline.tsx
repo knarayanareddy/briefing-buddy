@@ -11,7 +11,15 @@ import {
   CloudSun,
   Zap,
   Shield,
-  Activity
+  Activity,
+  TrendingUp,
+  Brain,
+  Code,
+  Handshake,
+  Users,
+  ServerCrash,
+  Sunrise,
+  Flag
 } from "lucide-react";
 
 interface Segment {
@@ -28,9 +36,18 @@ interface SegmentTimelineProps {
 }
 
 const TYPE_MAP: Record<string, { icon: any, label: string }> = {
+  opening: { icon: Sunrise, label: "Opening" },
+  security: { icon: Shield, label: "Security Alert" },
+  market: { icon: TrendingUp, label: "Market Intel" },
+  ai_insights: { icon: Brain, label: "AI Insights" },
+  engineering: { icon: Code, label: "Engineering" },
+  email_item: { icon: Mail, label: "Priority Comms" },
+  partnerships: { icon: Handshake, label: "Partnerships" },
+  team_updates: { icon: Users, label: "Team Updates" },
+  ops_alert: { icon: ServerCrash, label: "Ops Alert" },
+  closing: { icon: Flag, label: "Closing" },
   news_segment: { icon: Newspaper, label: "Intel Report" },
   github_prs: { icon: Github, label: "Code Analysis" },
-  email_item: { icon: Mail, label: "Comm Signal" },
   weather_segment: { icon: CloudSun, label: "Environment" },
   default: { icon: Zap, label: "Strategic Segment" }
 };
