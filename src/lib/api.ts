@@ -128,6 +128,37 @@ export interface UserSettings {
   updated_at: string;
 }
 
+export interface UsageStats {
+  tokens_used: number;
+  tokens_limit: number;
+  briefings_generated: number;
+  period_start: string;
+  period_end: string;
+}
+
+export type SystemKeyStatus = Record<string, boolean>;
+
+export interface ConnectorCredentialStatus {
+  provider: string;
+  status: string;
+  has_secret: boolean;
+}
+
+export interface AuditEvent {
+  id: string;
+  event_type: string;
+  created_at: string;
+  metadata?: Record<string, any>;
+}
+
+export interface UserSession {
+  id: string;
+  device: string;
+  ip_address: string;
+  last_active: string;
+  created_at: string;
+}
+
 // --- Briefing Core Actions ---
 
 /**
