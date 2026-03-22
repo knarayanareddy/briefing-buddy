@@ -17,7 +17,8 @@ validateConfig();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key, x-user-id, x-preview-user-id",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT",
 };
 
 serve(async (req: Request) => {
@@ -46,7 +47,7 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { profile_id, user_preferences, user_data: callerUserData } = body;
+    const { profile_id, user_preferences, user_data: callerUserData, trigger = "manual", scheduled_for, title } = body;
 
     let sanitizedData: AssembledUserData;
     let persona = "Professional Executive";
@@ -76,8 +77,9 @@ serve(async (req: Request) => {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${config.SUPABASE_SERVICE_ROLE_KEY}`,
-              "apikey": config.SUPABASE_SERVICE_ROLE_KEY!,
+              "apikey": config.SUPABASE_PUBLISHABLE_KEY!,
+              "x-internal-api-key": Deno.env.get("INTERNAL_API_KEY") || "",
+              "x-user-id": userId
             },
             signal: controller.signal
           }).catch(() => {});
@@ -96,8 +98,9 @@ serve(async (req: Request) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${config.SUPABASE_SERVICE_ROLE_KEY}`,
-            "apikey": config.SUPABASE_SERVICE_ROLE_KEY!,
+            "apikey": config.SUPABASE_PUBLISHABLE_KEY!,
+            "x-internal-api-key": Deno.env.get("INTERNAL_API_KEY") || "",
+            "x-user-id": userId
           },
           body: JSON.stringify({ profile_id, mode: "best_effort" })
         });
@@ -132,8 +135,9 @@ serve(async (req: Request) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${config.SUPABASE_SERVICE_ROLE_KEY}`,
-          "apikey": config.SUPABASE_SERVICE_ROLE_KEY!,
+          "apikey": config.SUPABASE_PUBLISHABLE_KEY!,
+          "x-internal-api-key": Deno.env.get("INTERNAL_API_KEY") || "",
+          "x-user-id": userId
         },
         body: JSON.stringify({ profile_id }),
       });
@@ -270,9 +274,14 @@ serve(async (req: Request) => {
       });
     }
 
+    const insertPayload: any = { user_id: userId, persona, script_json: scriptJson, plan_hash: planHash, trigger };
+    if (profile_id) insertPayload.profile_id = profile_id;
+    if (scheduled_for) insertPayload.scheduled_for = scheduled_for;
+    if (title) insertPayload.title = title;
+
     const { data: scriptData, error: dbErr } = await supabase
       .from("briefing_scripts")
-      .insert({ user_id: userId, persona, script_json: scriptJson, plan_hash: planHash })
+      .insert(insertPayload)
       .select().single();
 
     if (dbErr) throw dbErr;

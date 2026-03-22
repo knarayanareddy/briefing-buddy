@@ -1,1 +1,33 @@
 project_id = "jfsqrvjlxveeqkvkadtc"
+[functions.google-oauth-start]
+enabled = true
+verify_jwt = true
+import_map = "./functions/google-oauth-start/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/google-oauth-start/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/google-oauth-start/*.html" ]
+
+[functions.google-oauth-callback]
+enabled = true
+verify_jwt = true
+import_map = "./functions/google-oauth-callback/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/google-oauth-callback/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/google-oauth-callback/*.html" ]
+
+[functions.sync-calendar]
+enabled = true
+verify_jwt = true
+import_map = "./functions/sync-calendar/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/sync-calendar/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/sync-calendar/*.html" ]

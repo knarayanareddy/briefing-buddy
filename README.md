@@ -1,61 +1,61 @@
-# Morning Briefing Bot (Refactored)
+# Silent Architect — Industrial AI Orchestration
 
-A production-grade, secure AI orchestration system for generating personalized "Executive Briefings". Built for hackathon reliability with strict schema stability and zero-hallucination guardrails.
+**Silent Architect** is a high-fidelity, production-grade AI orchestration platform designed to generate complex, personalized "Executive Briefings" with absolute precision. It transforms raw data into cinematic intelligence via a suite of specialized dashboards.
 
-## 🌟 Features
+![Silent Architect Dashboard](https://raw.githubusercontent.com/knarayanareddy/morning-briefing-bot-a342ed3a/main/public/banner.png) *(Note: Add your own banner here)*
 
-- **Secure Orchestration**: All AI calls and provider interactions happen server-side (Supabase Edge Functions).
-- **Modern App Shell**: Consistent sidebar navigation and header with integrated profile/auth management.
-- **3-Pane Briefing Builder**: Advanced layout for profile selection, module configuration, and real-time briefing preview.
-- **Connectors & Health**: Centralized hub for RSS, GitHub, and Gmail connectors with health monitoring and secure secret management.
-- **Developer Mode**: Seamless UI gating for debug panels and raw metadata, with cross-tab state synchronization.
-- **Authentication Resilience**: Robust fallback to Email OTP sign-in and Dev Mode bypass for unauthenticated previews.
+## 🏛️ The Five Strategic Pillars
+
+The platform is architected into five distinct high-fidelity views, each following a consistent 3-column strategic layout:
+
+1.  **Briefing Builder**: The mission control for profile selection and intelligence source mapping. Features nested RSS, GitHub, and Gmail configuration cards.
+2.  **Connectors Dashboard**: Real-time monitoring of all external data integrations. Features neon health status indicators, latency tracking, and system event logs.
+3.  **Briefing Player (Today)**: A cinematic, HUD-driven experience for playback. Powered by the **GEN-4 Neural Stream** engine with live transcript grounding.
+4.  **Developer Mode**: A system-level telemetry dashboard. Provides raw metadata inspection, edge function status (Active/Pending), and cross-tab state synchronization.
+5.  **Vault Manager**: An enterprise-grade secrets manager. Handles encryption, automated rotation policies, and strict audit logging with a visual propagation flow diagram.
+
+## 🌟 Key Features
+
+- **Cinematic UI**: Premium dark-mode aesthetic utilizing Glassmorphism, deep navy palettes, and neon status signals.
+- **Zero-Hallucination Guardrails**: Strict schema validation ensures every briefing segment is grounded in verified source data.
 - **AppSec Hardening**:
-  - **Vault-based Secrets**: PATs and keys are stored in Supabase Vault, never exposed to the UI.
-  - **RLS Lockdown**: Tables restricted to Service Role only.
-  - **Deep Sanitization**: Automatic redaction of secrets and PII from user data and logs.
+    - **Supabase Vault**: All PATs and API keys are stored in hardware-level encryption (AES-256).
+    - **Secure Edge Orchestration**: All AI calls occur in isolated server-side environments.
+    - **RLS Isolation**: Database access restricted via Row Level Security (RLS).
+- **Deep Sanitization**: Automatic redaction of secrets and Pll from all logs and user-facing views.
 
-## 🏗️ Architecture
+## 🏗️ Technical Architecture
 
-- **Frontend**: React, Vite, Tailwind, Shadcn/UI (Radix primitives).
-- **State Management**: Zero-config `localStorage` sync via custom events for Developer Mode.
-- **Database**: Supabase (PostgreSQL) with RLS enabled.
-- **Edge Functions**:
-  - `generate-script`: LLM orchestration with deep sanitization.
-  - `start-render`: Sequential media rendering pipeline with error isolation.
-  - `sync-required-connectors`: Automated fetching and health checking for third-party data.
-  - `set-connector-secret`: Secure write-only endpoint for storing encrypted tokens.
+- **Frontend**: React (Vite), Tailwind CSS, Lucide Icons, Shadcn/UI (Radix primitives).
+- **Design System**: "Silent Architect" custom theme (index.css) using the **Outfit/Inter** typography variants.
+- **Backend**: Supabase (PostgreSQL), Edge Functions (Deno/TypeScript).
+- **APIs**: OpenAI (Script Generation), Fal.ai (Cinematic Video), Runware (B-roll generation).
 
 ## 🚀 Setup & Deployment
 
-### 1. Environment Variables
-Copy `.env.example` to `.env` and fill in:
-- `OPENAI_API_KEY`: For script generation.
-- `FAL_KEY`: For avatar video generation.
-- `RUNWARE_API_KEY`: For B-roll images.
-- `INTERNAL_API_KEY`: Secure key for Edge Function authentication.
+### 1. Configure Environment
+Copy `.env.example` to `.env` and configure:
+- `OPENAI_API_KEY`: Strategic script generation.
+- `FAL_KEY`: Cinematic avatar video generation.
+- `RUNWARE_API_KEY`: Neural B-roll synthesis.
+- `INTERNAL_API_KEY`: Secure Edge Function authentication.
 
-### 2. Database Migrations
-Run the migrations in `supabase/migrations/` to set up the schema and lock down RLS.
+### 2. Deploy Infrastructure
+1.  **Migrations**: Run SQL files in `supabase/migrations/`.
+2.  **Edge Functions**:
+    ```bash
+    supabase functions deploy generate-script --no-verify-jwt
+    supabase functions deploy start-render --no-verify-jwt
+    supabase functions deploy job-status --no-verify-jwt
+    ```
 
-### 3. Edge Functions
-Deploy via Supabase CLI:
-```bash
-supabase functions deploy generate-script --no-verify-jwt
-supabase functions deploy start-render --no-verify-jwt
-supabase functions deploy job-status --no-verify-jwt
-```
+## 🛡️ Development & Mocking
+Silent Architect includes a robust **Mock Mode** for rapid UI iteration without API expenditure. Toggle the `Developer Mode` in the UI to swap between live production parity and local mock simulation.
 
-```
+---
 
-## 🧪 Development Flow
-1. **Mock Mode**: Enabled by default in the UI. Uses local `mockData.ts` to simulate the full flow without API credits.
-2. **Live Mode**: Requires your `INTERNAL_API_KEY` to be entered in the UI.
+### 📄 Repository & Project Links
+- **Primary Repo**: [github.com/knarayanareddy/morning-briefing-bot-a342ed3a](https://github.com/knarayanareddy/morning-briefing-bot-a342ed3a)
+- **Spark Project**: [github.com/knarayanareddy/project-spark](https://github.com/knarayanareddy/project-spark)
 
-## 🛡️ Security Notes
-- **Never committed**: `.env` is ignored by git.
-- **Sanitization**: All user data is passed through `sanitizeDeep()` which truncates long fields and redacts common secret patterns.
-- **Validation**: If the LLM generates an invalid grounding source ID or non-sequential segments, the system rejects the output (Zero-Hallucination).
-
-## 📄 Repository Link
-Verified: [github.com/knarayanareddy/morning-briefing-bot-46f5a482](https://github.com/knarayanareddy/morning-briefing-bot-46f5a482)
+*Designed for high-stakes executive intelligence. 2026 Silent Architect Platform.*

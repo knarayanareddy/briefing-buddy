@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,39 +6,42 @@
 
 @layer base {
   :root {
-    --background: 220 20% 7%;
-    --foreground: 210 20% 92%;
-    --card: 220 18% 10%;
-    --card-foreground: 210 20% 92%;
-    --popover: 220 18% 12%;
-    --popover-foreground: 210 20% 92%;
-    --primary: 199 89% 48%;
-    --primary-foreground: 220 20% 7%;
-    --secondary: 220 16% 16%;
-    --secondary-foreground: 210 20% 85%;
-    --muted: 220 14% 14%;
-    --muted-foreground: 215 15% 55%;
-    --accent: 160 84% 39%;
-    --accent-foreground: 220 20% 7%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 220 16% 18%;
-    --input: 220 16% 18%;
-    --ring: 199 89% 48%;
-    --radius: 0.5rem;
-    --sidebar-background: 220 18% 10%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 199 89% 48%;
-    --sidebar-primary-foreground: 220 20% 7%;
-    --sidebar-accent: 220 16% 16%;
-    --sidebar-accent-foreground: 210 20% 92%;
-    --sidebar-border: 220 16% 18%;
-    --sidebar-ring: 199 89% 48%;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 220 20% 7%;
-    --success: 160 84% 39%;
-    --success-foreground: 220 20% 7%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 5%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 221.2 100% 70%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 222 47% 12%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 222 47% 15%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 221.2 83.2% 53.3%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+
+    --radius: 0.75rem;
+
+    /* Silent Architect Specifics */
+    --sa-bg: #0B0E14;
+    --sa-card: rgba(17, 25, 40, 0.75);
+    --sa-border: rgba(255, 255, 255, 0.08);
+    --sa-accent-gradient: linear-gradient(90deg, #5789FF 0%, #3B5BFF 100%);
+    --sa-accent-gradient-text: linear-gradient(135deg, #FFF 0%, #AAA 100%);
   }
 }
 
@@ -47,10 +50,43 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    @apply bg-[#0B0E14] text-foreground;
+    font-family: 'Inter', sans-serif;
   }
-  code, pre, .font-mono {
-    font-family: 'JetBrains Mono', monospace;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
   }
+}
+
+@layer components {
+  .sa-card {
+    @apply bg-[#111928]/75 border border-white/5 backdrop-blur-md rounded-2xl shadow-2xl;
+  }
+  
+  .sa-button-primary {
+    @apply bg-gradient-to-r from-[#5789FF] to-[#3B5BFF] text-white font-semibold transition-all hover:opacity-90 active:scale-95;
+  }
+
+  .sa-glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+
+  .sa-gradient-text {
+    @apply text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-400 font-bold;
+  }
+}
+
+/* Custom Scrollbar for Silent Architect */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
