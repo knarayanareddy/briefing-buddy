@@ -15,6 +15,7 @@ import ReadingList from "./pages/ReadingList.tsx";
 import History from "./pages/History.tsx";
 import Settings from "./pages/Settings.tsx";
 import YourBrief from "./pages/YourBrief.tsx";
+import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import SharedBrief from "./pages/SharedBrief.tsx";
 
@@ -58,8 +59,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/oauth/google/callback" element={<GoogleOAuthCallback />} />
           <Route path="/share/:token" element={<SharedBrief />} />
+          <Route path="/" element={<Index />} />
           <Route element={<RequireAuth><AppShell /></RequireAuth>}>
-            <Route path="/" element={<Navigate to="/brief" replace />} />
             <Route path="/brief" element={<YourBrief />} />
             <Route path="/today" element={<Today />} />
             <Route path="/builder" element={<BriefingBuilder />} />
