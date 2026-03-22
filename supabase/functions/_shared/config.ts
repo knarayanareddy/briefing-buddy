@@ -12,6 +12,7 @@ export const config = {
   MAX_BROLL_SEGMENTS: parseInt(Deno.env.get("MAX_BROLL_SEGMENTS") || "5"),
   DEFAULT_AVATAR_IMAGE_URL: Deno.env.get("DEFAULT_AVATAR_IMAGE_URL") || "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=800",
   CONNECTOR_SECRET_KEY: Deno.env.get("CONNECTOR_SECRET_KEY"),
+  SHARE_LINK_SECRET: Deno.env.get("SHARE_LINK_SECRET"),
 };
 
 export type Config = typeof config;

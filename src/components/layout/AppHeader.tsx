@@ -1,206 +1,89 @@
-import { useState, useEffect } from "react";
-import { useLocation, Link } from "react-router-dom";
-import { getProfiles, syncRequiredConnectors } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import React from "react";
 import { 
-  RefreshCw, 
-  LogOut, 
-  ChevronDown, 
-  Monitor, 
-  Layout, 
-  Database, 
-  History, 
-  BookOpen 
+  Bell, 
+  ShieldCheck, 
+  Rocket,
+  User,
+  Power,
+  ChevronDown,
+  RefreshCw,
+  Search,
+  Radio
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { useDevMode, isDevModeEnabled } from "@/lib/devMode";
+import { useDevMode } from "@/lib/devMode";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 
 export default function AppHeader({ onSync }: { onSync: () => void }) {
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
   const { isDevMode, toggleDevMode } = useDevMode();
-  const [user, setUser] = useState<any>(null);
-  const location = useLocation();
+  const [user, setUser] = React.useState<any>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setUser(s?.user ?? null));
-    loadProfiles();
-    
-    const handleDevModeSync = () => loadProfiles();
-    window.addEventListener("storage_dev_mode", handleDevModeSync);
-    window.addEventListener("storage", handleDevModeSync);
-    
-    return () => {
-      subscription.unsubscribe();
-      window.removeEventListener("storage_dev_mode", handleDevModeSync);
-      window.removeEventListener("storage", handleDevModeSync);
-    };
   }, []);
 
-  async function loadProfiles() {
-    let profs: any[] = [];
-    
-    // 1. Immediate Mock Injection for Dev Mode
-    if (isDevModeEnabled()) {
-      profs = [
-        { 
-          id: "mock-1", 
-          name: "Demo Executive", 
-          enabled_modules: ["rss", "github"], 
-          module_settings: {},
-          persona: "Professional Executive",
-          timezone: "UTC",
-          updated_at: new Date().toISOString()
-        }
-      ];
-    }
-
-    try {
-      const realProfs = await getProfiles().catch(() => []);
-      if (realProfs && realProfs.length > 0) {
-        profs = [...profs, ...realProfs];
-      }
-    } catch (err) {
-      console.warn("Header profiles load fail, using mocks if available", err);
-    } finally {
-      setProfiles(profs);
-      const lastId = localStorage.getItem("selectedProfileId");
-      if (lastId && profs.find(p => p.id === lastId)) {
-        setSelectedProfileId(lastId);
-      } else if (profs.length > 0) {
-        setSelectedProfileId(profs[0].id);
-      }
-    }
-  }
-
-  const handleManualSync = async () => {
-    if (!selectedProfileId) return;
-    setSyncing(true);
-    try {
-      await syncRequiredConnectors(selectedProfileId, "best_effort");
-      toast.success("Sync started");
-      onSync();
-    } catch (e: any) {
-      toast.error("Sync failed: " + e.message);
-    } finally {
-      setSyncing(true);
-      setTimeout(() => setSyncing(false), 2000); // UI feel
-    }
-  };
-
-  const getPageTitle = () => {
-    switch(location.pathname) {
-      case "/today": return "Executive Briefing";
-      case "/builder": return "Briefing Builder";
-      case "/connectors": return "Data Connectors";
-      case "/reading-list": return "Reading List";
-      case "/history": return "Briefing History";
-      default: return "Executive Briefing";
-    }
-  };
-
   return (
-    <header className="h-14 border-b border-white/5 bg-black/40 backdrop-blur-xl flex items-center justify-between px-6 z-50 sticky top-0">
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-           <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-           <h1 className="text-sm font-bold tracking-tight text-white/90">Morning Brief</h1>
-        </div>
-        
-        <Separator orientation="vertical" className="h-4 bg-white/10" />
-        
-        <div className="flex items-center gap-1">
-          <span className="text-[11px] text-white/40 font-medium">{getPageTitle()}</span>
+    <header className="h-20 border-b border-white/5 flex items-center justify-between px-8 bg-[#0B0E14]/50 backdrop-blur-md sticky top-0 z-50">
+      <div className="flex-1 flex items-center justify-center max-w-xl mx-auto order-2">
+        <div className="relative w-full group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-[#5789FF] transition-colors" />
+          <input 
+            type="text" 
+            placeholder="Search insights..." 
+            className="w-full bg-white/5 border border-white/5 h-11 pl-12 pr-4 rounded-xl text-sm focus:outline-none focus:border-[#5789FF]/30 focus:bg-white/10 transition-all placeholder:text-muted-foreground/50"
+          />
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5">
-          <Label htmlFor="dev-mode" className="text-[10px] font-bold text-white/40 uppercase tracking-widest cursor-pointer">Dev Mode</Label>
-          <Switch 
-            id="dev-mode" 
-            checked={isDevMode}
-            onCheckedChange={toggleDevMode}
-            className="scale-75 data-[state=checked]:bg-primary"
-          />
+      <div className="flex items-center gap-6 order-1">
+        {/* Subtle Brand or Page Title */}
+        <div className="flex items-center gap-2 text-white/40">
+           <Radio className="w-4 h-4 text-indigo-500 animate-pulse" />
+           <span className="text-[10px] uppercase font-black tracking-[0.2em]">Quantum Logistics</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-6 order-3">
+        <div className="flex items-center gap-4 pr-6 border-r border-white/10">
+          <button className="text-white/40 hover:text-white transition-colors relative">
+            <Bell className="w-5 h-5" />
+            <div className="absolute top-0 right-0 w-2 h-2 bg-indigo-500 rounded-full border-2 border-[#0B0E14]" />
+          </button>
+          <button className="text-white/40 hover:text-white transition-colors">
+            <Radio className="w-5 h-5" />
+          </button>
         </div>
 
-        <Separator orientation="vertical" className="h-4 bg-white/10" />
-
         <div className="flex items-center gap-3">
-          <div className="relative w-48">
-            <select 
-              className="w-full h-8 bg-black/20 border border-white/10 rounded-md px-3 text-[11px] font-medium text-white/70 outline-none focus:ring-1 focus:ring-primary/30 appearance-none cursor-pointer"
-              value={selectedProfileId || ""}
-              onChange={(e) => {
-                const id = e.target.value;
-                if (id === "new") {
-                   window.location.href = "/builder";
-                   return;
-                }
-                setSelectedProfileId(id);
-                localStorage.setItem("selectedProfileId", id);
-                window.dispatchEvent(new Event("storage"));
-              }}
-            >
-              {profiles.length > 0 ? (
-                profiles.map(p => (
-                  <option key={p.id} value={p.id} className="bg-neutral-900">{p.name}</option>
-                ))
-              ) : (
-                <option value="" disabled className="bg-neutral-900">No Profiles</option>
-              )}
-              <option value="new" className="text-primary font-bold bg-neutral-900">+ New Profile</option>
-            </select>
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
-              <ChevronDown className="w-3 h-3 text-white" />
-            </div>
-          </div>
-
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 px-3 text-[11px] gap-2 hover:bg-white/5 active:bg-white/10 transition-all text-white/70"
-            onClick={handleManualSync}
-            disabled={syncing || !selectedProfileId}
-          >
-            <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
-            <span>Sync</span>
-          </Button>
-
-          <Separator orientation="vertical" className="h-4 bg-white/10" />
-
-          {user ? (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 px-3 text-[11px] text-red-400/70 hover:text-red-300 hover:bg-red-500/10 gap-2"
-              onClick={() => supabase.auth.signOut()}
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Sign Out
-            </Button>
-          ) : (
-            <Button 
-              variant="default" 
-              size="sm" 
-              className="h-8 px-3 text-[11px] bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20"
-              onClick={() => {
-                // Open auth dialog or redirect
-                toast.info("Opening Auth...");
-                supabase.auth.signInWithOAuth({ provider: 'github' });
-              }}
-            >
-              Sign In
-            </Button>
-          )}
+           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Briefing Engine</span>
+           <DropdownMenu>
+             <DropdownMenuTrigger asChild>
+               <button className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 hover:border-white/20 transition-all">
+                  <User className="w-5 h-5 text-white/60" />
+               </button>
+             </DropdownMenuTrigger>
+             <DropdownMenuContent align="end" className="sa-card border-white/10 text-white p-2">
+               <div className="px-2 py-1.5 text-xs text-muted-foreground uppercase font-bold tracking-widest">Account</div>
+               <DropdownMenuItem className="focus:bg-white/5 focus:text-white cursor-pointer rounded-lg">
+                 Profile Settings
+               </DropdownMenuItem>
+               <DropdownMenuSeparator className="bg-white/5" />
+               <DropdownMenuItem 
+                 onClick={() => supabase.auth.signOut()}
+                 className="text-red-400 focus:bg-red-400/10 focus:text-red-400 cursor-pointer rounded-lg flex items-center gap-2"
+               >
+                 <Power className="w-4 h-4" />
+                 Sign Out
+               </DropdownMenuItem>
+             </DropdownMenuContent>
+           </DropdownMenu>
         </div>
       </div>
     </header>

@@ -19,7 +19,8 @@ export type ModuleId =
   | "hn_top"
   | "reading_list_reminders"
   | "newsletters_digest"
-  | "watchlist_alerts";
+  | "watchlist_alerts"
+  | "slack_updates";
 
 export interface ModuleDefinition {
   id: ModuleId;
@@ -38,8 +39,10 @@ export interface ModuleDefinition {
   settingsUi: Array<{
     key: string;
     label: string;
-    type: "number" | "text" | "multiselect";
+    type: "number" | "text" | "multiselect" | "boolean";
     options?: string[];
+    placeholder?: string;
+    description?: string;
   }>;
 }
 
@@ -55,7 +58,7 @@ export const MODULE_CATALOG: readonly ModuleDefinition[] = [
     requiredBuckets: ["weather"],
     defaults: { maxSegments: 1, settings: { caps: 1 } },
     settingsSchema: z.object({ caps: z.number().min(1).max(3).optional() }),
-    settingsUi: [{ key: "caps", label: "Days Forecast", type: "number" }],
+    settingsUi: [{ key: "caps", label: "Days Forecast", type: "number", description: "Number of days to include in the forecast." }],
   },
   {
     id: "calendar_today",
@@ -68,20 +71,28 @@ export const MODULE_CATALOG: readonly ModuleDefinition[] = [
     requiredBuckets: ["calendar_events"],
     defaults: { maxSegments: 3, settings: { caps: 3 } },
     settingsSchema: z.object({ caps: z.number().min(1).max(10).optional() }),
-    settingsUi: [{ key: "caps", label: "Max Meetings", type: "number" }],
+    settingsUi: [{ key: "caps", label: "Max Meetings", type: "number", description: "Maximum number of events to show." }],
   },
   {
     id: "inbox_triage",
     name: "Inbox Triage",
     label: "Inbox Triage",
     description: "Summarizes urgent unread emails that need your attention.",
-    availability: "beta",
+    availability: "ready",
     allowedCardTypes: ["email_reply"],
     requiredConnectors: [{ provider: "google" }],
     requiredBuckets: ["emails_unread"],
-    defaults: { maxSegments: 3, settings: { caps: 3 } },
-    settingsSchema: z.object({ caps: z.number().min(1).max(10).optional() }),
-    settingsUi: [{ key: "caps", label: "Max Emails", type: "number" }],
+    defaults: { maxSegments: 3, settings: { caps: 3, keywords: ["urgent", "action"], important_labels: ["INBOX"] } },
+    settingsSchema: z.object({ 
+      caps: z.number().min(1).max(10).optional(),
+      keywords: z.array(z.string()).optional(),
+      important_labels: z.array(z.string()).optional()
+    }),
+    settingsUi: [
+      { key: "caps", label: "Max Emails", type: "number", description: "Limit the number of prioritized emails." },
+      { key: "keywords", label: "Urgency Keywords", type: "multiselect", placeholder: "e.g. urgent, asap, help...", description: "Emails containing these words are prioritized." },
+      { key: "important_labels", label: "Preferred Labels", type: "multiselect", placeholder: "e.g. INBOX, WORK...", description: "Only summarize emails with these labels." }
+    ],
   },
   {
     id: "github_prs",
@@ -92,16 +103,66 @@ export const MODULE_CATALOG: readonly ModuleDefinition[] = [
     allowedCardTypes: ["github_review"],
     requiredConnectors: [{ provider: "github" }],
     requiredBuckets: ["github_prs"],
-    defaults: { maxSegments: 5, settings: { caps: 5 } },
-    settingsSchema: z.object({ caps: z.number().min(1).max(20).optional() }),
-    settingsUi: [{ key: "caps", label: "Max PRs", type: "number" }],
+    defaults: { maxSegments: 5, settings: { caps: 5, repositories: [], include_drafts: false } },
+    settingsSchema: z.object({ 
+      caps: z.number().min(1).max(20).optional(),
+      repositories: z.array(z.string()).optional(),
+      include_drafts: z.boolean().optional()
+    }),
+    settingsUi: [
+      { key: "caps", label: "Max PRs", type: "number", description: "Maximum number of PRs to track." },
+      { key: "repositories", label: "Target Repositories", type: "multiselect", placeholder: "e.g. owner/repo...", description: "Only track PRs from these specific repositories." },
+      { key: "include_drafts", label: "Include Drafts", type: "boolean", description: "Toggle to include PRs currently in draft state." }
+    ],
+  },
+  {
+    id: "slack_updates",
+    name: "Slack Updates",
+    label: "Slack Updates",
+    description: "Summarizes missed messages and @mentions from your Slack teams.",
+    availability: "beta",
+    allowedCardTypes: ["link_open"],
+    requiredConnectors: [{ provider: "slack" }],
+    requiredBuckets: ["slack_messages"],
+    defaults: { maxSegments: 3, settings: { caps: 3, channels: [], mention_only: true } },
+    settingsSchema: z.object({ 
+      caps: z.number().min(1).max(10).optional(),
+      channels: z.array(z.string()).optional(),
+      mention_only: z.boolean().optional()
+    }),
+    settingsUi: [
+      { key: "caps", label: "Max Summaries", type: "number" },
+      { key: "channels", label: "Followed Channels", type: "multiselect", placeholder: "#general, #dev...", description: "Specific channels to monitor for updates." },
+      { key: "mention_only", label: "Only Mentions", type: "boolean", description: "If enabled, only summarizes messages where you are @mentioned." }
+    ],
+  },
+  {
+    id: "ai_news_delta",
+    name: "AI News Delta",
+    label: "AI News Delta",
+    description: "Deep-dive into new AI research and industry shifts.",
+    availability: "ready",
+    allowedCardTypes: ["link_open"],
+    requiredConnectors: [{ provider: "rss" }],
+    requiredBuckets: ["news_items"],
+    defaults: { maxSegments: 5, settings: { caps: 3, filter_keywords: [], rss_feeds: [] } },
+    settingsSchema: z.object({
+      caps: z.number().min(1).max(10).optional(),
+      filter_keywords: z.array(z.string()).optional(),
+      rss_feeds: z.array(z.string()).optional()
+    }),
+    settingsUi: [
+      { key: "caps", label: "Max Highlights", type: "number" },
+      { key: "filter_keywords", label: "Focus Keywords", type: "multiselect", placeholder: "e.g. LLM, Agents...", description: "Prioritize news relating to these topics." },
+      { key: "rss_feeds", label: "Custom RSS Feeds", type: "multiselect", placeholder: "https://example.com/rss...", description: "Additional RSS sources to monitor." },
+    ],
   },
   {
     id: "github_mentions",
     name: "GitHub Mentions",
     label: "GitHub Mentions",
     description: "Recent mentions of your handle in issues or discussions.",
-    availability: "coming_soon",
+    availability: "beta",
     allowedCardTypes: ["link_open"],
     requiredConnectors: [{ provider: "github" }],
     requiredBuckets: ["github_mentions"],
@@ -121,25 +182,6 @@ export const MODULE_CATALOG: readonly ModuleDefinition[] = [
     defaults: { maxSegments: 5, settings: { caps: 5 } },
     settingsSchema: z.object({ caps: z.number().min(1).max(20).optional() }),
     settingsUi: [{ key: "caps", label: "Max Issues", type: "number" }],
-  },
-  {
-    id: "ai_news_delta",
-    name: "AI News Delta",
-    label: "AI News Delta",
-    description: "Deep-dive into new AI research and industry shifts.",
-    availability: "ready",
-    allowedCardTypes: ["link_open"],
-    requiredConnectors: [{ provider: "rss" }],
-    requiredBuckets: ["news_items"],
-    defaults: { maxSegments: 5, settings: { caps: 3, filter_keywords: [] } },
-    settingsSchema: z.object({
-      caps: z.number().min(1).max(10).optional(),
-      filter_keywords: z.array(z.string()).optional(),
-    }),
-    settingsUi: [
-      { key: "caps", label: "Max Highlights", type: "number" },
-      { key: "filter_keywords", label: "Keywords", type: "multiselect", options: ["LLM", "Robotics", "Agents", "OpenSource"] },
-    ],
   },
   {
     id: "newsletters_digest",
@@ -198,7 +240,7 @@ export const MODULE_CATALOG: readonly ModuleDefinition[] = [
     name: "Hacker News",
     label: "Hacker News",
     description: "Top trending stories from Hacker News.",
-    availability: "coming_soon",
+    availability: "ready",
     allowedCardTypes: ["link_open"],
     requiredConnectors: [],
     requiredBuckets: [],
@@ -211,7 +253,7 @@ export const MODULE_CATALOG: readonly ModuleDefinition[] = [
     name: "Reading List Reminders",
     label: "Reading List Reminders",
     description: "Reminders for items you saved to your reading list.",
-    availability: "coming_soon",
+    availability: "ready",
     allowedCardTypes: ["link_open"],
     requiredConnectors: [],
     requiredBuckets: [],

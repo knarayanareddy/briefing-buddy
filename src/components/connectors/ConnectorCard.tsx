@@ -1,139 +1,112 @@
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import React from "react";
+import { cn } from "@/lib/utils";
 import { 
   CheckCircle2, 
   AlertCircle, 
-  Clock, 
-  RefreshCw, 
+  Zap, 
+  RefreshCw,
+  MoreVertical,
   Settings2,
-  ExternalLink,
-  Github,
-  Newspaper,
-  Mail,
-  Zap
+  AlertTriangle
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface ConnectorCardProps {
-  type: "rss" | "github" | "gmail";
+  icon: React.ElementType;
   title: string;
   description: string;
-  status: "active" | "error" | "disconnected" | "syncing";
-  lastSync?: string;
-  error?: string;
-  onSync: () => void;
-  onManage: () => void;
-  isSyncing: boolean;
-  isDevMode: boolean;
-  children?: React.ReactNode; 
+  status: 'healthy' | 'warning' | 'error';
+  statusLabel: string;
+  stats: { label: string; value: string }[];
+  onConfigure: () => void;
+  iconBg?: string;
 }
 
-const icons = {
-  rss: Newspaper,
-  github: Github,
-  gmail: Mail
-};
-
-export default function ConnectorCard({
-  type,
-  title,
-  description,
-  status,
-  lastSync,
-  error,
-  onSync,
-  onManage,
-  isSyncing,
-  isDevMode,
-  children
+export default function ConnectorCard({ 
+  icon: Icon, 
+  title, 
+  description, 
+  status, 
+  statusLabel, 
+  stats, 
+  onConfigure,
+  iconBg = "bg-white/5"
 }: ConnectorCardProps) {
-  const Icon = icons[type];
+  
+  const statusColors = {
+    healthy: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+    warning: "text-amber-400 bg-amber-400/10 border-amber-400/20",
+    error: "text-rose-400 bg-rose-400/10 border-rose-400/20"
+  };
+
+  const statusDot = {
+    healthy: "bg-emerald-400",
+    warning: "bg-amber-400",
+    error: "bg-rose-400"
+  };
 
   return (
-    <Card className="group overflow-hidden bg-card/40 border-border hover:border-primary/30 transition-all duration-300">
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 duration-500 shadow-lg shadow-black/20",
-              status === "active" ? "bg-primary/10 text-primary border border-primary/20" : "bg-muted text-muted-foreground border border-border"
-            )}>
-              <Icon className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-foreground">{title}</h3>
-              <p className="text-xs text-muted-foreground">{description}</p>
-            </div>
-          </div>
-          <Badge 
-            variant="outline" 
-            className={cn(
-              "text-[10px] uppercase font-bold tracking-widest px-2 py-0.5",
-              status === "active" && "text-emerald-500 border-emerald-500/20 bg-emerald-500/5",
-              status === "error" && "text-destructive border-destructive/20 bg-destructive/5",
-              status === "syncing" && "text-primary border-primary/20 bg-primary/5 animate-pulse"
-            )}
-          >
-            {status}
-          </Badge>
+    <div className="sa-card p-8 group transition-all duration-300 hover:shadow-[0_0_40px_rgba(87,137,255,0.1)] relative overflow-hidden flex flex-col h-full">
+      {/* Status Badge */}
+      <div className="absolute top-6 right-6">
+        <Badge className={cn("px-2 py-0.5 text-[9px] font-black uppercase tracking-widest border", statusColors[status])}>
+          <div className={cn("w-1.5 h-1.5 rounded-full mr-2", statusDot[status])} />
+          {statusLabel}
+        </Badge>
+      </div>
+
+      <div className="flex items-start gap-5 mb-6">
+        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-inner border border-white/5", iconBg)}>
+          <Icon className="w-6 h-6 text-white" />
         </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-              <Clock className="w-3 h-3" /> Last Sync
-            </p>
-            <p className="text-sm font-medium">
-              {lastSync ? formatDistanceToNow(new Date(lastSync), { addSuffix: true }) : "Never"}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-              <Zap className="w-3 h-3" /> Strategy
-            </p>
-            <p className="text-sm font-medium">Incremental</p>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-3 rounded-lg bg-destructive/5 border border-destructive/10 flex items-start gap-2 animate-in fade-in zoom-in-95">
-            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-            <p className="text-[11px] text-destructive leading-normal font-medium">
-              {error}
-            </p>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          <Button 
-            className="flex-1 h-9 gap-2 shadow-inner" 
-            onClick={onSync} 
-            disabled={isSyncing || status === "disconnected"}
-          >
-            <RefreshCw className={cn("w-3.5 h-3.5", isSyncing && "animate-spin")} />
-            {isSyncing ? "Syncing..." : "Sync Now"}
-          </Button>
-          <Button 
-            variant="outline" 
-            className="h-9 gap-2 border-border hover:bg-muted"
-            onClick={onManage}
-          >
-            <Settings2 className="w-3.5 h-3.5" />
-            Configure
-          </Button>
+        <div className="flex-1 pr-16">
+          <h4 className="font-extrabold text-xl text-white tracking-tight -mb-1">{title}</h4>
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mt-2">{description}</p>
         </div>
       </div>
 
-      {isDevMode && children && (
-        <div className="border-t border-border bg-muted/30 p-4 animate-in slide-in-from-top-2">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-1.5">
-            <Settings2 className="w-3 h-3 text-primary" /> Developer Tools
-          </p>
-          {children}
-        </div>
-      )}
-    </Card>
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 gap-4 mb-8 pt-4 border-t border-white/5">
+        {stats.map((stat, i) => (
+          <div key={i} className="space-y-1">
+            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{stat.label}</span>
+            <p className="text-xs font-bold text-white/90 tracking-wide">{stat.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Actions */}
+      <div className="mt-auto flex items-center gap-3">
+        <Button 
+          onClick={onConfigure}
+          variant="outline" 
+          className="flex-1 h-12 bg-white/[0.03] border-white/5 hover:bg-white/10 hover:border-white/10 text-white font-bold uppercase tracking-widest text-[10px] rounded-xl transition-all"
+        >
+          {status === 'error' ? 'Re-authenticate' : 'Configure'}
+        </Button>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="w-12 h-12 bg-white/[0.03] border-white/5 hover:bg-white/10 rounded-xl"
+        >
+          {status === 'healthy' ? <MoreVertical className="w-4 h-4 text-white/40" /> : <Settings2 className="w-4 h-4 text-white/40" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function StatCard({ icon: Icon, label, value, colorClass }: any) {
+  return (
+    <div className="sa-card p-6 flex items-center gap-6 group hover:translate-y-[-2px] transition-all duration-300">
+      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg border border-white/5", colorClass)}>
+        <Icon className="w-7 h-7" />
+      </div>
+      <div className="space-y-1">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">{label}</span>
+        <h3 className="text-2xl font-black text-white tracking-tight">{value}</h3>
+      </div>
+    </div>
   );
 }

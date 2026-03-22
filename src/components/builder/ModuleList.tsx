@@ -1,129 +1,132 @@
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Search, ChevronRight, Settings2, Link2, AlertCircle, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import React from "react";
 import { cn } from "@/lib/utils";
+import { 
+  Rss, 
+  Github, 
+  Mail, 
+  Check, 
+  ChevronRight,
+  Plus,
+  GripVertical,
+  Database
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-interface Module {
-  id: string;
-  name: string;
-  description: string;
-  required_connectors?: string[];
-}
+const SourceCard = ({ icon: Icon, title, description, active, selected, onToggle, onSelect, hasRequired, isReady }: any) => (
+  <div 
+    onClick={onSelect}
+    className={cn(
+      "p-6 rounded-2xl transition-all duration-300 border cursor-pointer relative group overflow-hidden",
+      selected 
+        ? "bg-[#111928] border-[#5789FF]/30 shadow-[0_0_30px_rgba(87,137,255,0.1)]" 
+        : "bg-white/[0.02] border-white/5 hover:border-white/10"
+    )}
+  >
+    {/* Highlight for active selected state */}
+    {selected && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#5789FF]" />}
 
-interface ModuleListProps {
-  modules: Module[];
-  enabledModuleIds: string[];
-  selectedModuleId: string | null;
-  onToggle: (moduleId: string) => void;
-  onSelect: (moduleId: string) => void;
-  connectorStatus: Record<string, any>;
-}
-
-export default function ModuleList({ 
-  modules = [], 
-  enabledModuleIds = [], 
-  selectedModuleId, 
-  onToggle, 
-  onSelect,
-  connectorStatus = {} 
-}: ModuleListProps) {
-  const [search, setSearch] = useState("");
-
-  const filteredModules = (modules || []).filter(m => 
-    m.name?.toLowerCase().includes(search.toLowerCase()) || 
-    m.description?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <div className="flex flex-col h-full bg-card/30 border-r border-border overflow-hidden">
-      <div className="p-4 space-y-4 border-b border-border bg-background/50">
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search modules..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 bg-secondary border-border"
-          />
-        </div>
+    <div className="flex items-start gap-5">
+      <div className={cn(
+        "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-lg",
+        selected ? "bg-[#5789FF]/20 text-[#5789FF]" : "bg-white/5 text-muted-foreground group-hover:text-white"
+      )}>
+        <Icon className="w-6 h-6" />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {filteredModules.map((module) => {
-          const isEnabled = enabledModuleIds.includes(module.id);
-          const isSelected = selectedModuleId === module.id;
+      <div className="flex-1 space-y-1">
+        <div className="flex items-center justify-between">
+          <h4 className="font-bold text-lg text-white">{title}</h4>
+          {hasRequired && (
+            <Badge className={cn("text-[9px] px-2 py-0.5 h-5 border font-bold uppercase tracking-wider", isReady ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20")}>
+              {isReady ? "Ready" : "Needs Connection"}
+            </Badge>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+      </div>
+    </div>
+
+    {/* Sub-items for RSS Card if selected and in Silent Layout */}
+    {selected && title === "Technical RSS Feeds" && (
+      <div className="mt-6 space-y-2 animate-in slide-in-from-top-2 duration-300">
+        <SubSourceItem label="Hacker News - Top Stories" checked={true} />
+        <SubSourceItem label="The Register - Enterprise IT" checked={true} />
+      </div>
+    )}
+
+    {/* Sub-items for GitHub if selected */}
+    {selected && title === "GitHub Repository Tracking" && (
+      <div className="mt-6 flex gap-2 overflow-x-auto pb-2 noscrollbar">
+         <RepoPill name="langchain-ai/langchain" subs="Commits, Releases" />
+         <RepoPill name="openai/whisper" subs="Major Releases only" />
+      </div>
+    )}
+  </div>
+);
+
+const SubSourceItem = ({ label, checked }: any) => (
+  <div className="flex items-center gap-3 p-4 bg-black/40 border border-white/5 rounded-xl group/sub">
+    <GripVertical className="w-4 h-4 text-white/10 group-hover/sub:text-white/30 transition-colors cursor-grab" />
+    <span className="flex-1 text-[11px] font-semibold text-white/70">{label}</span>
+    <div className={cn(
+      "w-5 h-5 rounded flex items-center justify-center transition-all",
+      checked ? "bg-[#5789FF] text-white" : "border border-white/20"
+    )}>
+      {checked && <Check className="w-3 h-3" />}
+    </div>
+  </div>
+);
+
+const RepoPill = ({ name, subs }: any) => (
+  <div className="flex-shrink-0 p-4 bg-black/40 border border-white/5 rounded-xl space-y-2 min-w-[160px]">
+    <div className="flex items-center gap-2">
+       <div className="w-2 h-2 rounded-full bg-[#5789FF]" />
+       <span className="text-[10px] font-bold text-white/80 line-clamp-1 truncate">{name}</span>
+    </div>
+    <p className="text-[9px] text-muted-foreground leading-tight">{subs}</p>
+  </div>
+);
+
+export default function ModuleList({ 
+  modules, 
+  enabledModuleIds, 
+  selectedModuleId, 
+  onToggle, 
+  onSelect, 
+  connectorStatus,
+  layout 
+}: any) {
+  if (layout === "silent") {
+    return (
+      <div className="space-y-4">
+        {modules.map((mod: any) => {
+          let Icon = Database;
+          if (mod.id.includes("rss")) Icon = Rss;
+          if (mod.id.includes("github")) Icon = Github;
+          if (mod.id.includes("mail") || mod.id.includes("gmail") || mod.id.includes("inbox")) Icon = Mail;
           
-          // Check connector health for this module
-          const missingConnectors = module.required_connectors?.filter(c => !connectorStatus[c]?.active) || [];
-          const hasError = missingConnectors.length > 0;
+          const hasRequired = mod.requiredConnectors && mod.requiredConnectors.length > 0;
+          const isReady = hasRequired ? mod.requiredConnectors.every((c: any) => connectorStatus[c.provider] === "active") : true;
 
           return (
-            <div
-              key={module.id}
-              className={cn(
-                "group relative flex items-start gap-3 p-3 rounded-lg transition-all",
-                isSelected ? "bg-primary/10 border border-primary/20" : "hover:bg-secondary/50 border border-transparent"
-              )}
-            >
-              <div className="flex items-center h-5 mt-0.5">
-                <input
-                  type="checkbox"
-                  checked={isEnabled}
-                  onChange={() => onToggle(module.id)}
-                  className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary/20"
-                />
-              </div>
-
-              <div 
-                className="flex-1 min-w-0 cursor-pointer"
-                onClick={() => onSelect(module.id)}
-              >
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className={cn(
-                    "text-sm font-semibold truncate",
-                    isEnabled ? "text-foreground" : "text-muted-foreground"
-                  )}>
-                    {module.name}
-                  </span>
-                  {hasError && isEnabled && (
-                    <AlertCircle className="w-3.5 h-3.5 text-destructive animate-pulse" />
-                  )}
-                </div>
-                
-                <p className="text-[11px] text-muted-foreground line-clamp-1 mb-2">
-                  {module.description}
-                </p>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {module.required_connectors?.map(conn => (
-                    <Badge 
-                      key={conn} 
-                      variant="outline" 
-                      className={cn(
-                        "text-[9px] px-1.5 py-0 h-4 border-dashed",
-                        connectorStatus[conn]?.active 
-                          ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/5" 
-                          : "text-muted-foreground border-border"
-                      )}
-                    >
-                      <Link2 className="w-2.5 h-2.5 mr-1" />
-                      {conn}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {isSelected && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-primary">
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              )}
-            </div>
+            <SourceCard 
+              key={mod.id}
+              icon={Icon}
+              title={mod.label || mod.name}
+              description={mod.description}
+              selected={selectedModuleId === mod.id}
+              active={enabledModuleIds.includes(mod.id)}
+              onSelect={() => onSelect(mod.id)}
+              onToggle={() => onToggle(mod.id)}
+              hasRequired={hasRequired}
+              isReady={isReady}
+            />
           );
         })}
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Fallback to legacy layout if needed
+  return null; 
 }

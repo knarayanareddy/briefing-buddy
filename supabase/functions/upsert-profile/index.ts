@@ -11,7 +11,8 @@ validateConfig();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key, x-user-id, x-preview-user-id",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT",
 };
 
 serve(async (req) => {
@@ -43,6 +44,7 @@ serve(async (req) => {
       name: migrated.name,
       persona: migrated.persona || null,
       timezone: migrated.timezone || null,
+      frequency: migrated.frequency || 'manual',
       enabled_modules: migrated.enabled_modules,
       module_settings: migrated.module_settings,
       module_catalog_version: MODULE_CATALOG_VERSION,
