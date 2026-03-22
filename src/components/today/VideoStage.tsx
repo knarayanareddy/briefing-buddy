@@ -23,7 +23,8 @@ export default function VideoStage({
   onEnded, 
   onSkip, 
   isPlaying,
-  segmentLabel
+  segmentLabel,
+  dialogue
 }: VideoStageProps) {
   return (
     <div className="flex flex-col w-full h-full space-y-8 animate-in zoom-in-95 duration-1000">
