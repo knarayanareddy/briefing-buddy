@@ -9,8 +9,7 @@ validateConfig();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key, x-user-id, x-preview-user-id",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key",
 };
 
 /**
@@ -40,12 +39,7 @@ serve(async (req) => {
       config.SUPABASE_URL!,
       config.SUPABASE_SERVICE_ROLE_KEY!
     );
-    if (!auth.user_id) {
-      return new Response(JSON.stringify({ error: "Unauthorized: missing user context" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-    const userId = auth.user_id;
+    const userId = auth.user_id!;
 
     // ── PHASE 0: Usage Limits ────────────────────────────────────────────────
     const RENDER_LIMIT = parseInt(Deno.env.get("DAILY_RENDER_LIMIT") || "10");
@@ -60,40 +54,21 @@ serve(async (req) => {
       });
     }
 
-    // 1. Fetch script and segments, enforcing ownership
+    // 1. Fetch script and segments
     const { data: scriptData, error: scriptErr } = await supabase
       .from("briefing_scripts")
       .select("script_json")
       .eq("id", script_id)
-      .eq("user_id", userId)
       .single();
 
-    if (scriptErr) throw new Error("Script not found or access denied");
+    if (scriptErr) throw scriptErr;
     const script = scriptData.script_json;
     const segments = script.timeline_segments;
-
-    // 1b. Check for existing active job (Idempotency)
-    const { data: existingJob } = await supabase
-      .from("render_jobs")
-      .select("id, status")
-      .eq("script_id", script_id)
-      .eq("user_id", userId)
-      .in("status", ["queued", "rendering", "complete"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingJob) {
-      console.log(`Reusing existing job ${existingJob.id} for script ${script_id}`);
-      return new Response(JSON.stringify({ job_id: existingJob.id, status: existingJob.status, reused: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     // 2. Create/Initialize render job (Atomic)
     const { data: job, error: jobErr } = await supabase
       .from("render_jobs")
-      .insert({ script_id, user_id: userId, status: "queued" }) // Initialized as queued
+      .insert({ script_id, status: "queued" }) // Initialized as queued
       .select()
       .single();
 

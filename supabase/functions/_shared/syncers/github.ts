@@ -26,20 +26,7 @@ export async function syncGithubForUser(
 
     const pat = await decryptString(connSecret.secret_ciphertext, connSecret.secret_iv, secretKey);
 
-    // 2. Get GitHub Config
-    const { data: configRow } = await supabase
-      .from("connector_configs")
-      .select("config")
-      .eq("user_id", userId)
-      .eq("provider", "github")
-      .single();
-
-    const config = configRow?.config || {};
-    const repos = config.repos ? config.repos.split(",").map((s: string) => s.trim()) : [];
-    const indexPrs = config.index_prs !== false; // default true
-    const indexIssues = !!config.index_issues;
-
-    // 3. Fetch User identity
+    // 2. Fetch User identity
     const userRes = await fetch("https://api.github.com/user", {
       headers: {
         "Authorization": `token ${pat}`,
@@ -54,57 +41,32 @@ export async function syncGithubForUser(
     const userData = await userRes.json();
     const login = userData.login;
 
-    // 4. Build and Search
-    let itemsFound: any[] = [];
+    // 3. Fetch PRs
+    const query = `is:pr is:open archived:false review-requested:${login}`;
+    const ghResponse = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(query)}&sort=updated&order=desc`, {
+      headers: {
+        "Authorization": `token ${pat}`,
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "Morning-Briefing-Bot"
+      }
+    });
 
-    if (indexPrs) {
-      let prQuery = `is:pr is:open archived:false review-requested:${login}`;
-      if (repos.length > 0) {
-        prQuery += " " + repos.map((r: string) => `repo:${r}`).join(" ");
-      }
-      
-      const prRes = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(prQuery)}&sort=updated&order=desc`, {
-        headers: {
-          "Authorization": `token ${pat}`,
-          "Accept": "application/vnd.github.v3+json",
-          "User-Agent": "Morning-Briefing-Bot"
-        }
-      });
-      if (prRes.ok) {
-        const data = await prRes.json();
-        itemsFound = [...itemsFound, ...data.items.map((i: any) => ({ ...i, sa_type: 'github_pr' }))];
-      }
+    if (!ghResponse.ok) {
+        throw new Error(`github_api_error: ${ghResponse.status}`);
     }
 
-    if (indexIssues) {
-      let issueQuery = `is:issue is:open archived:false assignee:${login}`;
-      if (repos.length > 0) {
-        issueQuery += " " + repos.map((r: string) => `repo:${r}`).join(" ");
-      }
-      const issueRes = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(issueQuery)}&sort=updated&order=desc`, {
-        headers: {
-          "Authorization": `token ${pat}`,
-          "Accept": "application/vnd.github.v3+json",
-          "User-Agent": "Morning-Briefing-Bot"
-        }
-      });
-      if (issueRes.ok) {
-        const data = await issueRes.json();
-        itemsFound = [...itemsFound, ...data.items.map((i: any) => ({ ...i, sa_type: 'github_issue' }))];
-      }
-    }
-
+    const prData = await ghResponse.json();
     const syncedItems = [];
 
-    for (const pr of itemsFound) {
+    for (const pr of prData.items) {
       const externalId = pr.node_id || pr.html_url;
       if (!externalId) continue;
-      const stableId = await stableSourceId(pr.sa_type === 'github_pr' ? "pr" : "issue", externalId);
+      const stableId = await stableSourceId("pr", externalId);
 
       syncedItems.push({
         user_id: userId,
         provider: "github",
-        item_type: pr.sa_type,
+        item_type: "github_pr",
         external_id: externalId,
         source_id: stableId,
         occurred_at: pr.updated_at,
@@ -130,14 +92,14 @@ export async function syncGithubForUser(
       if (upsertErr) throw upsertErr;
     }
 
-    // 6. Record Success
+    // 5. Record Success
     await recordSyncSuccess(supabase, {
       runId,
       userId,
       provider,
-      itemsFound: itemsFound.length,
+      itemsFound: prData.items.length,
       itemsUpserted: syncedItems.length,
-      meta: { github_login: login, repos_indexed: repos.length }
+      meta: { github_login: login }
     });
 
     return { ok: true, items_synced: syncedItems.length };

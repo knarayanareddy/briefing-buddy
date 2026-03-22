@@ -1,15 +1,11 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Save, Info, Settings } from "lucide-react";
+import { AlertCircle, Save, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import ConfigModal from "@/components/connectors/ConfigModal";
 
 interface SettingsUi {
-  type: "string_list" | "int" | "number" | "boolean" | "multiselect" | "text";
+  type: "string_list" | "int";
   label: string;
   description: string;
   placeholder?: string;
@@ -23,13 +19,11 @@ interface ModuleSettingsPanelProps {
     name: string;
     description: string;
     settingsUi?: Record<string, SettingsUi>;
-    requiredConnectors?: Array<{ provider: string }>;
   };
   settings: Record<string, any>;
   onUpdate: (key: string, value: any) => void;
   onSave: () => void;
   isSaving: boolean;
-  connectorStatus?: Record<string, string>;
 }
 
 export default function ModuleSettingsPanel({ 
@@ -37,28 +31,8 @@ export default function ModuleSettingsPanel({
   settings, 
   onUpdate, 
   onSave,
-  isSaving,
-  connectorStatus 
+  isSaving 
 }: ModuleSettingsPanelProps) {
-  const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [activeProvider, setActiveProvider] = useState<string | null>(null);
-
-  const handleOpenConfig = (provider: string) => {
-    setActiveProvider(provider);
-    setConfigModalOpen(true);
-  };
-
-  if (!module) {
-    return (
-      <div className="flex flex-col h-full items-center justify-center p-8 text-center space-y-4 animate-pulse">
-        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-          <Settings className="w-6 h-6 text-white/20 animate-spin" />
-        </div>
-        <p className="text-sm text-muted-foreground">Initializing engine configuration...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full bg-background animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="p-6 border-b border-border bg-card/50">
@@ -71,46 +45,13 @@ export default function ModuleSettingsPanel({
             {isSaving ? "Saving..." : "Save Profile"}
           </Button>
         </div>
-        <h2 className="text-2xl font-bold text-foreground">{module.name || (module as any).label}</h2>
+        <h2 className="text-2xl font-bold text-foreground">{module.name}</h2>
         <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
           {module.description}
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 space-y-8">
-        {module.requiredConnectors && module.requiredConnectors.length > 0 && (
-          <div className="space-y-4 mb-8">
-            <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground/50 mb-4">Intelligence Pipelines</h3>
-            <div className="grid gap-3">
-              {module.requiredConnectors.map((c: any) => {
-                const status = (connectorStatus || {})[c.provider] || "missing";
-                const isReady = status === "active";
-                return (
-                  <div key={c.provider} className="flex items-center justify-between p-4 rounded-xl bg-card/20 border border-border">
-                    <div className="flex items-center gap-3">
-                      <div className={cn("w-2 h-2 rounded-full", isReady ? "bg-green-500" : "bg-yellow-500")} />
-                      <div className="space-y-0.5">
-                        <p className="text-sm font-bold capitalize text-foreground">{c.provider}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                          {isReady ? "Connected & Ready" : "Configuration Required"}
-                        </p>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-xs h-8"
-                      onClick={() => handleOpenConfig(c.provider)}
-                    >
-                      {isReady ? "Configure" : "Connect"}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {!module.settingsUi || Object.keys(module.settingsUi).length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-center space-y-3 bg-card/20 rounded-2xl border border-dashed border-border p-6">
             <Info className="w-8 h-8 text-muted-foreground/30" />
@@ -118,29 +59,17 @@ export default function ModuleSettingsPanel({
           </div>
         ) : (
           Object.entries(module.settingsUi).map(([key, ui]) => (
-            <div key={key} className="space-y-4 max-w-xl group relative">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor={key} className="text-sm font-bold group-hover:text-primary transition-colors">
-                    {ui.label}
-                  </Label>
-                  {ui.type === "boolean" && (
-                    <Switch
-                      id={key}
-                      checked={!!settings[key]}
-                      onCheckedChange={(val) => onUpdate(key, val)}
-                      className="data-[state=checked]:bg-primary"
-                    />
-                  )}
-                </div>
-                {ui.description && (
-                  <p className="text-[11px] text-muted-foreground leading-relaxed pr-12">
-                     {ui.description}
-                  </p>
-                )}
+            <div key={key} className="space-y-3 max-w-xl group">
+              <div className="space-y-1">
+                <Label htmlFor={key} className="text-sm font-bold group-hover:text-primary transition-colors">
+                  {ui.label}
+                </Label>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {ui.description}
+                </p>
               </div>
 
-              {ui.type === "int" || ui.type === "number" ? (
+              {ui.type === "int" ? (
                 <div className="flex items-center gap-4">
                   <Input
                     id={key}
@@ -149,39 +78,31 @@ export default function ModuleSettingsPanel({
                     max={ui.max}
                     value={settings[key] ?? ""}
                     onChange={(e) => onUpdate(key, parseInt(e.target.value) || 0)}
-                    className="w-32 bg-secondary/50 border-border h-11 px-4 rounded-xl"
+                    className="w-32 bg-secondary border-border"
                   />
                   {(ui.min !== undefined || ui.max !== undefined) && (
-                    <span className="text-[10px] font-mono text-muted-foreground/50">
+                    <span className="text-[10px] font-mono text-muted-foreground">
                       Range: {ui.min ?? "0"}-{ui.max ?? "∞"}
                     </span>
                   )}
                 </div>
-              ) : ui.type === "multiselect" || ui.type === "string_list" ? (
-                <div className="space-y-3">
+              ) : (
+                <div className="space-y-2">
                   <Input
                     id={key}
                     placeholder={ui.placeholder || "Enter items separated by commas..."}
                     value={Array.isArray(settings[key]) ? settings[key].join(", ") : ""}
                     onChange={(e) => onUpdate(key, e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
-                    className="bg-secondary/50 border-border h-11 px-4 rounded-xl placeholder:text-muted-foreground/30"
+                    className="bg-secondary border-border"
                   />
                   <div className="flex flex-wrap gap-1.5 min-h-[1.5rem]">
-                    {(Array.isArray(settings[key]) ? settings[key] : []).map((tag: any, i: number) => (
-                      <Badge key={i} variant="secondary" className="text-[10px] px-2.5 py-0.5 h-6 bg-primary/10 text-primary border-primary/20 rounded-lg">
+                    {(settings[key] as string[] || []).map((tag, i) => (
+                      <Badge key={i} variant="secondary" className="text-[10px] px-2 py-0 h-5 bg-primary/5 text-primary border-primary/10">
                         {tag}
                       </Badge>
                     ))}
                   </div>
                 </div>
-              ) : ui.type === "boolean" ? null : (
-                <Input
-                  id={key}
-                  placeholder={ui.placeholder}
-                  value={settings[key] ?? ""}
-                  onChange={(e) => onUpdate(key, e.target.value)}
-                  className="bg-secondary/50 border-border h-11 px-4 rounded-xl"
-                />
               )}
             </div>
           ))
@@ -200,13 +121,6 @@ export default function ModuleSettingsPanel({
           </div>
         </div>
       </div>
-
-      <ConfigModal 
-        isOpen={configModalOpen} 
-        onClose={() => setConfigModalOpen(false)} 
-        title={`${(activeProvider || "").toUpperCase()} Integration`} 
-        provider={activeProvider} 
-      />
     </div>
   );
 }

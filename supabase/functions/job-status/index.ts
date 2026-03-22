@@ -7,8 +7,7 @@ validateConfig();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key, x-user-id, x-preview-user-id",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key",
 };
 
 serve(async (req) => {
@@ -30,12 +29,6 @@ serve(async (req) => {
     const jobId = url.searchParams.get("job_id");
     if (!jobId) throw new Error("job_id is required");
 
-    if (!auth.user_id) {
-      return new Response(JSON.stringify({ error: "Unauthorized: missing user context" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
     const supabase = createClient(
       config.SUPABASE_URL!,
       config.SUPABASE_SERVICE_ROLE_KEY!
@@ -45,10 +38,9 @@ serve(async (req) => {
       .from("render_jobs")
       .select("status, error")
       .eq("id", jobId)
-      .eq("user_id", auth.user_id)
       .single();
 
-    if (jobErr) throw new Error("Job not found or access denied");
+    if (jobErr) throw jobErr;
 
     const { data: segments, error: segErr } = await supabase
       .from("rendered_segments")

@@ -6,15 +6,13 @@ import { getModule, ModuleId } from "../_shared/moduleManifest.ts";
 import { syncRssForUser } from "../_shared/syncers/rss.ts";
 import { syncGithubForUser } from "../_shared/syncers/github.ts";
 import { syncGmailForUser } from "../_shared/syncers/gmail.ts";
-import { syncSlackForUser } from "../_shared/syncers/slack.ts";
 import { shouldSkipSyncNow } from "../_shared/connectorHealth.ts";
 
 validateConfig();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key, x-user-id, x-preview-user-id",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key",
 };
 
 serve(async (req: Request) => {
@@ -97,8 +95,6 @@ serve(async (req: Request) => {
             syncRes = await syncGithubForUser(supabase, { userId, secretKey: config.CONNECTOR_SECRET_KEY! });
           } else if (provider === "google") {
             syncRes = await syncGmailForUser(supabase, { userId });
-          } else if (provider === "slack") {
-            syncRes = await syncSlackForUser(supabase, { userId, secretKey: config.CONNECTOR_SECRET_KEY! });
           }
 
           results.push({ provider, outcome: "success", items_synced: syncRes?.items_synced || 0 });
