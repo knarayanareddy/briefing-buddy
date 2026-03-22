@@ -4,6 +4,10 @@ import brollMarket from "@/assets/broll-market-briefing.mp4.asset.json";
 import brollDev from "@/assets/broll-dev-workspace.mp4.asset.json";
 import brollAI from "@/assets/broll-ai-neural.mp4.asset.json";
 import brollCalendar from "@/assets/broll-calendar-plan.mp4.asset.json";
+import brollEmail from "@/assets/broll-email-priority.jpg";
+import brollPartnerships from "@/assets/broll-partnerships.jpg";
+import brollTeam from "@/assets/broll-team-updates.jpg";
+import brollOps from "@/assets/broll-ops-alert.jpg";
 
 export const mockVideoUrls = [
   brollMorning.url,
@@ -14,17 +18,17 @@ export const mockVideoUrls = [
   brollCalendar.url,
 ];
 
-/** Maps each segment index (0–9) to the most relevant b-roll video */
+/** Maps each segment index (0–9) to a unique b-roll asset */
 export const mockBrollBySegment = [
   brollMorning.url,    // 0 opening
   brollSecurity.url,   // 1 security
   brollMarket.url,     // 2 market
   brollAI.url,         // 3 ai_insights
   brollDev.url,        // 4 engineering
-  brollMorning.url,    // 5 email_item
-  brollMarket.url,     // 6 partnerships
-  brollDev.url,        // 7 team_updates
-  brollSecurity.url,   // 8 ops_alert
+  brollEmail,          // 5 email_item
+  brollPartnerships,   // 6 partnerships
+  brollTeam,           // 7 team_updates
+  brollOps,            // 8 ops_alert
   brollCalendar.url,   // 9 closing
 ];
 
