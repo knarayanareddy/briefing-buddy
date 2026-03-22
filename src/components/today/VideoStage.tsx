@@ -1,5 +1,5 @@
 import { VideoPlayer } from "@/components/VideoPlayer";
-import { Loader2, AlertCircle, FastForward, Play, Shield, Activity, Zap } from "lucide-react";
+import { Loader2, AlertCircle, FastForward, Play, Pause, SkipBack, SkipForward, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,8 +11,15 @@ interface VideoStageProps {
   onEnded: () => void;
   onSkip: () => void;
   isPlaying: boolean;
+  isPaused?: boolean;
+  onTogglePause?: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  onResume?: () => void;
   segmentLabel: string;
   dialogue?: string;
+  currentIndex?: number;
+  totalSegments?: number;
 }
 
 export default function VideoStage({ 
@@ -23,9 +30,18 @@ export default function VideoStage({
   onEnded, 
   onSkip, 
   isPlaying,
+  isPaused,
+  onTogglePause,
+  onPrev,
+  onNext,
+  onResume,
   segmentLabel,
-  dialogue
+  dialogue,
+  currentIndex = 0,
+  totalSegments = 0
 }: VideoStageProps) {
+  const isActive = isPlaying || isPaused;
+
   return (
     <div className="flex flex-col w-full h-full space-y-8 animate-in zoom-in-95 duration-1000">
       
@@ -51,8 +67,15 @@ export default function VideoStage({
         <div className="absolute top-10 left-10 right-10 flex justify-between items-start z-20">
            <div className="space-y-1">
               <div className="flex items-center gap-3">
-                 <div className="bg-red-600 text-white text-[9px] font-black px-2 py-1 rounded-sm uppercase tracking-tighter shadow-lg">GEN-4</div>
-                 <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Neural Stream</span>
+                 <div className={cn(
+                   "text-white text-[9px] font-black px-2 py-1 rounded-sm uppercase tracking-tighter shadow-lg",
+                   isPlaying ? "bg-red-600" : isPaused ? "bg-amber-600" : "bg-white/20"
+                 )}>
+                   {isPlaying ? "LIVE" : isPaused ? "PAUSED" : "GEN-4"}
+                 </div>
+                 <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">
+                   {isActive ? `${currentIndex + 1} of ${totalSegments}` : "Neural Stream"}
+                 </span>
               </div>
               <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-md">{segmentLabel}</h2>
            </div>
@@ -69,7 +92,7 @@ export default function VideoStage({
         </div>
 
         {/* Footer HUD (Rendering/Status) */}
-        {(status === "rendering" || (progress && progress.percent_complete < 100)) && (
+        {(status === "rendering" || (progress && progress.percent_complete < 100)) && !isActive && (
           <div className="absolute bottom-10 left-10 right-10 z-20 space-y-4 animate-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
                <div className="flex items-center gap-3">
@@ -109,14 +132,74 @@ export default function VideoStage({
           </div>
         )}
 
-        {!isPlaying && status === "complete" && (
+        {/* Paused overlay with transport controls */}
+        {isPaused && (
           <div className="absolute inset-0 flex items-center justify-center z-20">
-             <div className="w-24 h-24 rounded-full bg-white/5 backdrop-blur-2xl border border-white/10 flex items-center justify-center transition-all hover:scale-110 hover:bg-[#5789FF] hover:border-[#5789FF] shadow-[0_0_50px_rgba(0,0,0,0.5)] group/play cursor-pointer">
+            <div className="flex items-center gap-6">
+              <button
+                onClick={onPrev}
+                disabled={currentIndex === 0}
+                className="w-14 h-14 rounded-full bg-white/5 backdrop-blur-2xl border border-white/10 flex items-center justify-center transition-all hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <SkipBack className="w-5 h-5 text-white" />
+              </button>
+              
+              <button
+                onClick={onResume}
+                className="w-24 h-24 rounded-full bg-emerald-600/90 backdrop-blur-2xl border border-emerald-400/30 flex items-center justify-center transition-all hover:scale-110 hover:bg-emerald-500 shadow-[0_0_50px_rgba(16,185,129,0.3)] cursor-pointer"
+              >
+                <Play className="w-8 h-8 text-white fill-current ml-1" />
+              </button>
+
+              <button
+                onClick={onNext}
+                disabled={currentIndex >= totalSegments - 1}
+                className="w-14 h-14 rounded-full bg-white/5 backdrop-blur-2xl border border-white/10 flex items-center justify-center transition-all hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <SkipForward className="w-5 h-5 text-white" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Ready state — big play button */}
+        {!isActive && status === "complete" && (
+          <div className="absolute inset-0 flex items-center justify-center z-20">
+             <div 
+               onClick={onTogglePause || onResume}
+               className="w-24 h-24 rounded-full bg-white/5 backdrop-blur-2xl border border-white/10 flex items-center justify-center transition-all hover:scale-110 hover:bg-[#5789FF] hover:border-[#5789FF] shadow-[0_0_50px_rgba(0,0,0,0.5)] group/play cursor-pointer"
+             >
                 <Play className="w-8 h-8 text-white fill-current group-hover/play:scale-110 transition-transform" />
              </div>
           </div>
         )}
+
+        {/* Playing — click anywhere to pause */}
+        {isPlaying && (
+          <div 
+            onClick={onTogglePause}
+            className="absolute inset-0 z-10 cursor-pointer"
+            title="Click to pause"
+          />
+        )}
       </div>
+
+      {/* Segment progress bar */}
+      {isActive && totalSegments > 0 && (
+        <div className="flex items-center gap-1.5 px-2">
+          {Array.from({ length: totalSegments }).map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                "h-1 flex-1 rounded-full transition-all duration-300",
+                i < currentIndex ? "bg-[#5789FF]" :
+                i === currentIndex ? (isPlaying ? "bg-emerald-500" : "bg-amber-500") :
+                "bg-white/10"
+              )}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Decorative Grid Lines */}
       <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-white/5 to-transparent flex items-center justify-between px-10">
