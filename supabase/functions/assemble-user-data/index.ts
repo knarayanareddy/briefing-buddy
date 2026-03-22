@@ -207,7 +207,7 @@ serve(async (req: Request) => {
         .from("synced_items")
         .select("*")
         .eq("user_id", userId)
-        .eq("item_type", "news")
+        .eq("provider", "rss")
         .gt("occurred_at", newsSince)
         .order("occurred_at", { ascending: false })
         .limit(30);
@@ -244,7 +244,7 @@ serve(async (req: Request) => {
         .from("synced_items")
         .select("*")
         .eq("user_id", userId)
-        .eq("item_type", "github_pr")
+        .eq("provider", "github")
         .order("occurred_at", { ascending: false })
         .limit(50); // Fetch more for filtering
 
@@ -279,7 +279,7 @@ serve(async (req: Request) => {
         .from("synced_items")
         .select("*")
         .eq("user_id", userId)
-        .eq("item_type", "email")
+        .in("provider", ["google", "gmail"])
         .order("occurred_at", { ascending: false })
         .limit(50);
 
