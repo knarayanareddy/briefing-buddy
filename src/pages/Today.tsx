@@ -50,7 +50,8 @@ export default function Today() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const selectedProfileId = localStorage.getItem("selectedProfileId");
+  const rawProfileId = localStorage.getItem("selectedProfileId");
+  const selectedProfileId = rawProfileId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawProfileId) ? rawProfileId : null;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
