@@ -40,7 +40,7 @@ export default function Today() {
 
   const { isDevMode } = useDevMode();
   const [appState, setAppState] = useState<AppState>("idle");
-  const [useMock, setUseMock] = useState(true);
+  const [useMock, setUseMock] = useState(!isDevMode);
   const [scriptId, setScriptId] = useState<string | null>(null);
   const [scriptJson, setScriptJson] = useState<any>(null);
   const [jobId, setJobId] = useState<string | null>(null);
