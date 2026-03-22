@@ -192,9 +192,9 @@ export async function previewPlan(profileId: string) {
   });
 }
 
-export async function startRender(scriptId: string) {
+export async function startRender(scriptId: string, force = true) {
   return callEdgeFunction<{ job_id: string }>("start-render", {
-    body: { script_id: scriptId },
+    body: { script_id: scriptId, force },
   });
 }
 
