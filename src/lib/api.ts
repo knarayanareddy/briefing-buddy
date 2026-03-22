@@ -129,11 +129,13 @@ export interface UserSettings {
 }
 
 export interface UsageStats {
-  tokens_used: number;
-  tokens_limit: number;
-  briefings_generated: number;
-  period_start: string;
-  period_end: string;
+  generate_percent: number;
+  generate_count: number;
+  generate_limit: number;
+  render_percent: number;
+  render_count: number;
+  render_limit: number;
+  [key: string]: any;
 }
 
 export type SystemKeyStatus = Record<string, boolean>;
@@ -141,7 +143,8 @@ export type SystemKeyStatus = Record<string, boolean>;
 export interface ConnectorCredentialStatus {
   provider: string;
   status: string;
-  has_secret: boolean;
+  configured: boolean;
+  has_secret?: boolean;
 }
 
 export interface AuditEvent {
@@ -152,10 +155,12 @@ export interface AuditEvent {
 }
 
 export interface UserSession {
-  id: string;
-  device: string;
-  ip_address: string;
-  last_active: string;
+  session_id: string;
+  user_agent: string;
+  device_label: string;
+  ip: string;
+  location_text: string;
+  last_seen_at: string;
   created_at: string;
 }
 
