@@ -13,14 +13,8 @@ import {
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { mockScriptJson } from "@/lib/mockData";
-import { 
-  Accordion, 
-  AccordionContent, 
-  AccordionItem, 
-  AccordionTrigger 
-} from "@/components/ui/accordion";
-import { Database, Terminal, Shield, Zap, Activity } from "lucide-react";
+import { mockScriptJson, mockVideoUrls } from "@/lib/mockData";
+import { Terminal, Shield } from "lucide-react";
 import { useDevMode } from "@/lib/devMode";
 
 import SegmentTimeline from "@/components/today/SegmentTimeline";
@@ -215,10 +209,11 @@ export default function Today() {
       if (useMock) {
         for (let i = 0; i < segments.length; i++) {
           setSegments(prev => prev.map((s, idx) => idx === i ? { ...s, status: "rendering" } : s));
-          await new Promise(r => setTimeout(r, 1000));
+          await new Promise(r => setTimeout(r, 800));
           setSegments(prev => prev.map((s, idx) => idx === i ? { 
             ...s, 
             status: "complete",
+            avatar_video_url: mockVideoUrls[i] || mockVideoUrls[0],
             b_roll_image_url: `https://picsum.photos/seed/seg${s.segment_id}/800/450`
           } : s));
           setProgress({ percent_complete: Math.round(((i + 1) / segments.length) * 100), complete: i + 1, total: segments.length });
