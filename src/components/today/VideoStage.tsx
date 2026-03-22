@@ -40,6 +40,7 @@ export default function VideoStage({
             onEnded={onEnded}
             isPlaying={isPlaying}
             segmentLabel={segmentLabel}
+            dialogue={dialogue}
           />
         </div>
 
