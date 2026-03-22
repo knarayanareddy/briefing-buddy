@@ -11,7 +11,8 @@ validateConfig();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-api-key, x-user-id, x-preview-user-id",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT",
 };
 
 // Mapping: provider -> synced_items item_type
@@ -215,8 +216,8 @@ serve(async (req: Request) => {
       const caps = settings.caps ?? mod.defaults.maxSegments;
       const activeKeywords = settings.filter_keywords?.length > 0 ? settings.filter_keywords : globalKeywords;
       
-      const newsRule = watchRules.find(r => r.module_id === "ai_news_delta")?.rule || {};
-      const { include_keywords = [], exclude_keywords = [] } = newsRule;
+      const include_keywords = activeKeywords;
+      const exclude_keywords: string[] = [];
 
       userData.news_items = scoreItems(newsItems || [], activeKeywords, { include_keywords, exclude_keywords })
         .slice(0, caps).map((i: any) => ({
@@ -236,8 +237,8 @@ serve(async (req: Request) => {
       const settings = moduleSettings["github_prs"] || mod.defaults.settings;
       const caps = settings.caps ?? mod.defaults.maxSegments;
       
-      const githubRule = watchRules.find(r => r.module_id === "github_prs")?.rule || {};
-      const { repos = [], authors = [], require_review_requested = false } = githubRule;
+      const repos = settings.repositories || [];
+      const includeDrafts = settings.include_drafts || false;
 
       const { data: prItems } = await supabase
         .from("synced_items")
@@ -249,8 +250,7 @@ serve(async (req: Request) => {
 
       const filteredPrs = (prItems || []).filter(i => {
         if (repos.length > 0 && !repos.includes(i.payload?.repo)) return false;
-        if (authors.length > 0 && !authors.includes(i.payload?.author)) return false;
-        if (require_review_requested && i.payload?.status !== "review_requested") return false;
+        if (!includeDrafts && i.payload?.is_draft) return false;
         return true;
       });
 
@@ -272,8 +272,8 @@ serve(async (req: Request) => {
       const settings = moduleSettings["inbox_triage"] || mod.defaults.settings;
       const caps = settings.caps ?? mod.defaults.maxSegments;
 
-      const inboxRule = watchRules.find(r => r.module_id === "inbox_triage")?.rule || {};
-      const { include_senders = [], include_subject_keywords = [] } = inboxRule;
+      const include_subject_keywords = settings.keywords || ["urgent", "action", "asap"];
+      const allowed_labels = settings.important_labels || [];
 
       const { data: emailItems } = await supabase
         .from("synced_items")
@@ -283,11 +283,14 @@ serve(async (req: Request) => {
         .order("occurred_at", { ascending: false })
         .limit(50);
 
-      const filteredEmails = (emailItems || []).map(i => {
-        const fromVal = i.payload?.from || "";
+      const filteredEmails = (emailItems || []).filter(i => {
+        if (allowed_labels.length > 0 && !(i.payload?.labels || []).some((l: string) => allowed_labels.includes(l))) {
+           return false;
+        }
+        return true;
+      }).map(i => {
         const titleVal = i.title || "";
         let priority = false;
-        if (include_senders.some((s: string) => fromVal.toLowerCase().includes(s.toLowerCase()))) priority = true;
         if (include_subject_keywords.some((s: string) => titleVal.toLowerCase().includes(s.toLowerCase()))) priority = true;
         return { ...i, priority };
       }).sort((a,b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));

@@ -7,27 +7,46 @@ import AppShell from "./components/layout/AppShell";
 import Today from "./pages/Today.tsx";
 import Connectors from "./pages/Connectors.tsx";
 import BriefingBuilder from "./pages/BriefingBuilder.tsx";
+import IntegrationLab from "./pages/IntegrationLab.tsx";
+import Vault from "./pages/Vault.tsx";
+import Auth from "./pages/Auth.tsx";
+import GoogleOAuthCallback from "./pages/GoogleOAuthCallback.tsx";
+import ReadingList from "./pages/ReadingList.tsx";
+import History from "./pages/History.tsx";
+import Settings from "./pages/Settings.tsx";
+import YourBrief from "./pages/YourBrief.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import SharedBrief from "./pages/SharedBrief.tsx";
+
+import { useDevMode } from "@/lib/devMode";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
-// Placeholders for future milestones
-const ReadingList = () => (
-  <div className="flex-1 flex items-center justify-center p-8 text-center animate-in fade-in duration-700">
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-foreground">Reading List</h2>
-      <p className="text-muted-foreground italic max-w-sm">This feature is scheduled for v1.1. You'll be able to save articles here for deeper reading later.</p>
-    </div>
-  </div>
-);
-const History = () => (
-  <div className="flex-1 flex items-center justify-center p-8 text-center animate-in fade-in duration-700">
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-foreground">Briefing History</h2>
-      <p className="text-muted-foreground italic max-w-sm">Your past daily briefings will be archived here soon.</p>
-    </div>
-  </div>
-);
+const RequireAuth = ({ children }: { children: React.ReactNode }) => {
+  const { isDevMode } = useDevMode();
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) return null;
+  if (!session && !isDevMode) return <Navigate to="/auth" replace />;
+  
+  return <>{children}</>;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -36,13 +55,20 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route element={<AppShell />}>
-            <Route path="/" element={<Navigate to="/today" replace />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/oauth/google/callback" element={<GoogleOAuthCallback />} />
+          <Route path="/share/:token" element={<SharedBrief />} />
+          <Route element={<RequireAuth><AppShell /></RequireAuth>}>
+            <Route path="/" element={<Navigate to="/brief" replace />} />
+            <Route path="/brief" element={<YourBrief />} />
             <Route path="/today" element={<Today />} />
             <Route path="/builder" element={<BriefingBuilder />} />
             <Route path="/connectors" element={<Connectors />} />
+            <Route path="/vault" element={<Vault />} />
+            <Route path="/dev-mode" element={<IntegrationLab />} />
             <Route path="/reading-list" element={<ReadingList />} />
             <Route path="/history" element={<History />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

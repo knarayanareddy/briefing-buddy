@@ -5,6 +5,7 @@ export interface RawProfile {
   name: string;
   persona?: string;
   timezone?: string;
+  frequency?: string;
   enabled_modules: any;
   module_settings: any;
   module_catalog_version?: number;
