@@ -147,13 +147,16 @@ export default function SharedBrief() {
       <div className="flex flex-1 min-h-0 bg-[#0F1115]">
          <div className="flex-1 shrink-0 bg-black min-h-0 flex flex-col relative">
            {segments.length > 0 ? (
-             <VideoStage 
-               segments={segments}
-               activeIndex={activeSegmentIndex}
-               isPlaying={isPlaying}
-               onPlayPause={handlePlayPause}
-               videoRefs={videoRefs}
-             />
+              <VideoStage 
+                videoUrl={segments[activeSegmentIndex]?.video_url || null}
+                bRollUrl={segments[activeSegmentIndex]?.broll_url || null}
+                status={segments[activeSegmentIndex]?.status || "pending"}
+                progress={null}
+                onEnded={() => {}}
+                onSkip={() => {}}
+                isPlaying={isPlaying}
+                segmentLabel={segments[activeSegmentIndex]?.segment_type || "Segment"}
+              />
            ) : (
              <div className="absolute inset-0 flex items-center justify-center text-white/30 text-sm italic">
                No visual media attached to this brief.
