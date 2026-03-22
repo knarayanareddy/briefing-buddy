@@ -5,7 +5,7 @@ import { authorizeRequest } from "../_shared/auth.ts";
 import { redactSecrets } from "../_shared/sanitize.ts";
 import { logAudit } from "../_shared/usage.ts";
 import { syncSlackForUser } from "../_shared/syncers/slack.ts";
-import { shouldSkipSyncNow, recordSyncAttemptStart, recordSyncSkip } from "../connectorHealth.ts";
+import { shouldSkipSyncNow, recordSyncAttemptStart, recordSyncSkip } from "../_shared/connectorHealth.ts";
 
 validateConfig();
 
