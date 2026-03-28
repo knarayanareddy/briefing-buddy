@@ -36,13 +36,8 @@ serve(async (req: Request) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "AI gateway not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Import orqClient for routed LLM calls
+    const { orqCall } = await import("../_shared/orqClient.ts");
 
     // Fetch grounding evidence if we have a script_id
     let evidenceContext = "";
@@ -123,43 +118,33 @@ RULES:
 - Be conversational but professional.
 ${evidenceContext}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+    let answer: string;
+    try {
+      const aiResult = await orqCall({
+        task_type: "voice_chat",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: question },
         ],
+        model: "google/gemini-3-flash-preview",
         stream: false,
-      }),
-    });
-
-    if (!response.ok) {
-      const status = response.status;
-      if (status === 429) {
+      });
+      answer = aiResult.choices?.[0]?.message?.content || "I couldn't generate a response.";
+    } catch (err: any) {
+      if (err.message === "Rate limited") {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (status === 402) {
+      if (err.message === "Credits exhausted") {
         return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const errText = await response.text();
-      console.error("AI gateway error:", status, errText);
       return new Response(JSON.stringify({ error: "AI service unavailable" }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const aiResult = await response.json();
-    const answer = aiResult.choices?.[0]?.message?.content || "I couldn't generate a response.";
 
     return new Response(
       JSON.stringify({
