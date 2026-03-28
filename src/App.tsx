@@ -61,6 +61,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/oauth/google/callback" element={<GoogleOAuthCallback />} />
           <Route path="/oauth/slack/callback" element={<SlackOAuthCallback />} />
+          <Route path="/oauth/github/callback" element={<GitHubOAuthCallback />} />
           <Route path="/share/:token" element={<SharedBrief />} />
           <Route path="/" element={<Index />} />
           <Route element={<RequireAuth><AppShell /></RequireAuth>}>
