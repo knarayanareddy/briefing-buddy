@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 // George – authoritative male voice, great for briefings
-const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
+const DEFAULT_VOICE_ID = "iP95p4xoKVk53GoZ742B"; // Chris – warm, conversational male
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS")
@@ -44,13 +44,13 @@ serve(async (req: Request) => {
         },
         body: JSON.stringify({
           text: text.slice(0, 5000),
-          model_id: "eleven_turbo_v2_5",
+          model_id: "eleven_multilingual_v2",
           voice_settings: {
-            stability: 0.6,
+            stability: 0.4,
             similarity_boost: 0.75,
-            style: 0.4,
+            style: 0.45,
             use_speaker_boost: true,
-            speed: 1.05,
+            speed: 1.0,
           },
         }),
       },
