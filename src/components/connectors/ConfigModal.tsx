@@ -163,6 +163,15 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
     }
   };
 
+  const handleGitHubConnect = async () => {
+    try {
+      const res = await startGitHubOAuth(window.location.origin + "/oauth/github/callback");
+      if (res.url) window.location.href = res.url;
+    } catch (err: any) {
+      toast.error("Failed to start GitHub OAuth: " + err.message);
+    }
+  };
+
   const renderFields = () => {
     if (isLoading) {
       return (
