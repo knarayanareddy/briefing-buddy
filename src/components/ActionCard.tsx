@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Mail, Cloud, Calendar, Code, Link as LinkIcon, Bookmark, Check, Play, X, Loader2, AlertTriangle, CheckCircle2, Github } from "lucide-react";
+import { ExternalLink, Mail, Cloud, Calendar, Code, Link as LinkIcon, Bookmark, Check, Play, X, Loader2, AlertTriangle, CheckCircle2, Github, MessageSquare, TrendingUp } from "lucide-react";
 import { useState, useCallback } from "react";
 import { addToReadingList, createAction, approveAction, executeAction, type ActionRecord } from "@/lib/api";
 import { toast } from "sonner";
@@ -39,6 +39,8 @@ const iconMap: Record<string, React.ReactNode> = {
   save_reading_list: <Bookmark className="w-5 h-5" />,
   summary: <CheckCircle2 className="w-5 h-5" />,
   approval: <CheckCircle2 className="w-5 h-5" />,
+  slack_post_message: <MessageSquare className="w-5 h-5" />,
+  stock_alert: <TrendingUp className="w-5 h-5" />,
 };
 
 type ActionLifecycle = "idle" | "proposing" | "proposed" | "approving" | "approved" | "executing" | "completed" | "failed" | "canceled";

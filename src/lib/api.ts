@@ -258,7 +258,9 @@ export async function triggerSync(provider: string) {
     rss: "sync-news",
     github: "sync-github",
     google: "sync-gmail",
-    slack: "sync-slack"
+    slack: "sync-slack",
+    weather: "sync-weather",
+    stocks: "sync-stocks",
   };
   const fnName = fnMap[provider] || `sync-${provider}`;
   return callEdgeFunction<{ ok: boolean; items_synced: number }>(fnName, {});

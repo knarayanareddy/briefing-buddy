@@ -77,7 +77,7 @@ export async function upsertSyncedItems(supabase: SupabaseClient, items: Partial
  * Standardized status builder for the dashboard.
  */
 export async function getConnectorStatusSummary(supabase: SupabaseClient, userId: string) {
-  const providers = ["rss", "github", "slack", "google", "notion"];
+  const providers = ["rss", "github", "slack", "google", "notion", "weather", "stocks"];
   
   const { data: configs } = await supabase
     .from("connector_configs")

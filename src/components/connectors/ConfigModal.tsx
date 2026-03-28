@@ -74,6 +74,8 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
           await setConnectorSecret(provider, { pat: secret });
         } else if (provider === 'slack') {
           await setConnectorSecret(provider, { bot_token: secret });
+        } else if (provider === 'notion') {
+          await setConnectorSecret(provider, { api_token: secret });
         }
       }
 
@@ -332,6 +334,47 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
                 checked={config.units !== "celsius"} 
                 onChange={(val) => setConfig({ ...config, units: val ? "fahrenheit" : "celsius" })} 
               />
+            </div>
+          </div>
+        );
+      case "stocks":
+        return (
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Stock Tickers</Label>
+              <Input 
+                placeholder="e.g. AAPL, GOOGL, MSFT, TSLA"
+                value={config.tickers || ""}
+                onChange={(e) => setConfig({ ...config, tickers: e.target.value })}
+                className="sa-input-premium"
+              />
+              <p className="text-[10px] text-white/40">Comma-separated ticker symbols. Data sourced from Yahoo Finance (free, no API key needed).</p>
+            </div>
+          </div>
+        );
+      case "notion":
+        return (
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Notion API Token</Label>
+              <Input 
+                type="password"
+                placeholder="ntn_****************"
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                className="sa-input-premium font-mono"
+              />
+              <p className="text-[9px] text-white/30 uppercase tracking-widest">Leave blank to keep existing. Create at notion.so/my-integrations.</p>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Database / Page IDs to Monitor</Label>
+              <Input 
+                placeholder="e.g. abc123, def456..."
+                value={config.page_ids || ""}
+                onChange={(e) => setConfig({ ...config, page_ids: e.target.value })}
+                className="sa-input-premium"
+              />
+              <p className="text-[10px] text-white/40">Comma-separated Notion page or database IDs. Share them with your integration first.</p>
             </div>
           </div>
         );
