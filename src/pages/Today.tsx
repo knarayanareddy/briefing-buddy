@@ -51,6 +51,7 @@ export default function Today() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [evidenceSourceId, setEvidenceSourceId] = useState<string | null>(null);
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const rawProfileId = localStorage.getItem("selectedProfileId");
