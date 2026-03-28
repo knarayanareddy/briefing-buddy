@@ -10,13 +10,15 @@ import { addToReadingList } from "@/lib/api";
 interface ActionPanelProps {
   card: any;
   dialogue: string;
+  scriptId?: string | null;
+  onEvidenceClick?: (sourceId: string) => void;
 }
 
-export default function ActionPanel({ card, dialogue }: ActionPanelProps) {
+export default function ActionPanel({ card, dialogue, scriptId, onEvidenceClick }: ActionPanelProps) {
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
-    setIsSaved(false); // Reset when card changes
+    setIsSaved(false);
   }, [card?.payload, card?.action_payload]);
 
   const hasAction = card && Object.keys(card).length > 0;
@@ -34,7 +36,7 @@ export default function ActionPanel({ card, dialogue }: ActionPanelProps) {
      if (!payloadUrl) return;
      try {
        await addToReadingList({
-         source_id: card.source_id || card.title || "Unknown Source", // Try to find a source_id
+         source_id: card.source_id || card.title || "Unknown Source",
          title: card.title || "Untitled Intelligence",
          url: payloadUrl
        });
@@ -50,14 +52,13 @@ export default function ActionPanel({ card, dialogue }: ActionPanelProps) {
       <div className="p-8 border-b border-white/5 space-y-6">
         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Intelligence Context</h3>
         
-        {/* Live Transcript / Segment Analysis */}
         <div className="sa-card bg-[#111928] border-[#5789FF]/20 p-6 space-y-4 shadow-[0_0_30px_rgba(87,137,255,0.05)]">
            <div className="flex items-center justify-between">
               <span className="text-[9px] font-black uppercase tracking-widest text-[#5789FF]">Live Signal</span>
               <div className="w-1.5 h-1.5 rounded-full bg-[#5789FF] animate-pulse" />
            </div>
            <p className="text-xs font-bold text-white leading-relaxed italic opacity-80">
-             "{dialogue || "Parceing neural packets..."}"
+             "{dialogue || "Parsing neural packets..."}"
            </p>
         </div>
       </div>
@@ -72,6 +73,8 @@ export default function ActionPanel({ card, dialogue }: ActionPanelProps) {
                 dialogue={dialogue}
                 segmentIndex={0}
                 totalSegments={1}
+                scriptId={scriptId}
+                onEvidenceClick={onEvidenceClick}
               />
             </div>
 
