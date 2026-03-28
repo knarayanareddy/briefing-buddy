@@ -399,6 +399,70 @@ export async function touchSession(sessionData: any) {
   });
 }
 
+// --- Actions Lifecycle ---
+
+export interface ActionRecord {
+  action_id: string;
+  status: 'proposed' | 'approved' | 'executing' | 'completed' | 'failed' | 'canceled';
+  idempotency_key: string;
+  existing?: boolean;
+  provider_result?: Record<string, any>;
+  error_code?: string;
+  error_message?: string;
+  // Full record fields (from actions-get)
+  provider?: string;
+  action_type?: string;
+  payload?: Record<string, any>;
+  evidence_source_ids?: string[];
+  briefing_script_id?: string;
+  segment_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function createAction(payload: {
+  provider: string;
+  action_type: string;
+  payload: Record<string, any>;
+  briefing_script_id?: string;
+  segment_id?: string;
+  evidence_source_ids?: string[];
+}): Promise<ActionRecord> {
+  return callEdgeFunction<ActionRecord>("actions-create", { body: payload });
+}
+
+export async function approveAction(actionId: string, approve: boolean): Promise<ActionRecord> {
+  return callEdgeFunction<ActionRecord>("actions-approve", {
+    body: { action_id: actionId, approve },
+  });
+}
+
+export async function executeAction(actionId: string): Promise<ActionRecord> {
+  return callEdgeFunction<ActionRecord>("actions-execute", {
+    body: { action_id: actionId },
+  });
+}
+
+export async function getAction(actionId: string): Promise<ActionRecord> {
+  return callEdgeFunction<ActionRecord>("actions-get", {
+    body: { action_id: actionId },
+  });
+}
+
+// --- Evidence / Sources ---
+
+export async function getEvidenceItem(sourceId: string) {
+  // Query synced_items by source_id through the existing briefing-sources endpoint
+  // or directly from supabase client
+  const { data, error } = await (supabase as any)
+    .from("synced_items")
+    .select("*")
+    .eq("source_id", sourceId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 // --- Integration Lab & Preflight ---
 
 export const systemPreflight = async () => {
