@@ -23,7 +23,10 @@ export async function syncRssForUser(
       .single();
 
     if (cfgErr || !configRow) {
-      throw new Error("rss_not_configured: RSS configuration not found.");
+      // Not configured is not an error — just skip silently
+      console.log("RSS not configured for user, skipping sync");
+      await recordSyncSuccess(supabase, { userId, provider, runId, itemsFound: 0, itemsUpserted: 0 });
+      return { synced: 0, total: 0, skipped: true };
     }
 
     const feeds = configRow.config.feeds || [];
