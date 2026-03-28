@@ -15,6 +15,7 @@ interface OrqOptions {
   tools?: any[];
   tool_choice?: any;
   stream?: boolean;
+  temperature?: number;
 }
 
 interface OrqResult {
@@ -46,6 +47,7 @@ export async function orqCall(options: OrqOptions): Promise<OrqResult> {
     stream: options.stream || false,
   };
 
+  if (options.temperature !== undefined) body.temperature = options.temperature;
   if (options.tools) body.tools = options.tools;
   if (options.tool_choice) body.tool_choice = options.tool_choice;
 
@@ -80,6 +82,82 @@ export async function orqCall(options: OrqOptions): Promise<OrqResult> {
     console.error(`orqClient [${options.task_type}] error:`, (err as Error).message);
     throw err;
   }
+}
+
+/**
+ * High-level wrapper: call LLM expecting JSON output.
+ * - Attempts primary call
+ * - On parse/validation failure: retries once with stricter prompt
+ * - On total failure: returns null so caller can use fallback
+ */
+export async function orqGenerateJSON<T = any>(opts: {
+  task_type: string;
+  messages: Array<{ role: string; content: string }>;
+  tools?: any[];
+  tool_choice?: any;
+  model?: string;
+  temperature?: number;
+  /** Optional validator. Throw if invalid. */
+  validate?: (parsed: any) => T;
+}): Promise<{ data: T; routed_via: string } | null> {
+  const attempt = async (messages: Array<{ role: string; content: string }>, attemptLabel: string) => {
+    const result = await orqCall({
+      task_type: opts.task_type,
+      messages,
+      tools: opts.tools,
+      tool_choice: opts.tool_choice,
+      model: opts.model,
+      temperature: opts.temperature,
+      stream: false,
+    });
+
+    // Extract content: prefer tool call arguments, then message content
+    let raw: any;
+    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall?.function?.arguments) {
+      raw = JSON.parse(toolCall.function.arguments);
+    } else {
+      const content = result.choices?.[0]?.message?.content || "";
+      const jsonStr = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      raw = JSON.parse(jsonStr);
+    }
+
+    if (opts.validate) {
+      raw = opts.validate(raw);
+    }
+
+    return { data: raw as T, routed_via: result.routed_via };
+  };
+
+  // Attempt 1
+  try {
+    return await attempt(opts.messages, "primary");
+  } catch (err: any) {
+    const msg = (err as Error).message;
+    // Don't retry on billing/rate errors
+    if (msg === "Rate limited" || msg === "Credits exhausted") throw err;
+    console.warn(`orqGenerateJSON [${opts.task_type}] attempt 1 failed: ${msg.slice(0, 120)}`);
+  }
+
+  // Attempt 2: retry with stricter instruction
+  try {
+    const stricterMessages = [
+      ...opts.messages.slice(0, -1),
+      {
+        role: opts.messages[opts.messages.length - 1].role,
+        content: opts.messages[opts.messages.length - 1].content +
+          "\n\nIMPORTANT: Return ONLY valid JSON. No markdown, no extra text, no code fences.",
+      },
+    ];
+    return await attempt(stricterMessages, "retry");
+  } catch (err: any) {
+    const msg = (err as Error).message;
+    if (msg === "Rate limited" || msg === "Credits exhausted") throw err;
+    console.warn(`orqGenerateJSON [${opts.task_type}] attempt 2 failed: ${msg.slice(0, 120)}`);
+  }
+
+  // Return null — caller handles fallback
+  return null;
 }
 
 /**

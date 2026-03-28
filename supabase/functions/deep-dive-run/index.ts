@@ -89,97 +89,84 @@ Format your response as JSON:
 
     const userPrompt = `${question ? `User question: ${question}\n\n` : ""}Evidence:\n${evidenceContext || "No evidence available."}`;
 
-    // Use tool calling for structured output
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    // Use tool calling for structured output via orqClient
+    const toolsDef = [{
+      type: "function",
+      function: {
+        name: "submit_analysis",
+        description: "Submit the completed analysis with citations and tool trace",
+        parameters: {
+          type: "object",
+          properties: {
+            summary: { type: "string", description: "Executive summary of findings" },
+            verdict: { type: "string", enum: ["verified", "partially_verified", "unverified", "n/a"] },
+            key_findings: { type: "array", items: { type: "string" } },
+            citations: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  url: { type: "string" },
+                  relevance: { type: "string" },
+                },
+                required: ["title"],
+              },
+            },
+            tool_steps: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  step: { type: "number" },
+                  tool: { type: "string" },
+                  action: { type: "string" },
+                  finding: { type: "string" },
+                  duration_ms: { type: "number" },
+                },
+                required: ["step", "tool", "action", "finding"],
+              },
+            },
+          },
+          required: ["summary", "citations", "tool_steps"],
+        },
       },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+    }];
+
+    let analysis: any = {};
+    try {
+      const aiResult = await orqCall({
+        task_type: type === "verify" ? "verify_claim" : "deep_dive",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "submit_analysis",
-            description: "Submit the completed analysis with citations and tool trace",
-            parameters: {
-              type: "object",
-              properties: {
-                summary: { type: "string", description: "Executive summary of findings" },
-                verdict: { type: "string", enum: ["verified", "partially_verified", "unverified", "n/a"] },
-                key_findings: { type: "array", items: { type: "string" } },
-                citations: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      url: { type: "string" },
-                      relevance: { type: "string" },
-                    },
-                    required: ["title"],
-                  },
-                },
-                tool_steps: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      step: { type: "number" },
-                      tool: { type: "string" },
-                      action: { type: "string" },
-                      finding: { type: "string" },
-                      duration_ms: { type: "number" },
-                    },
-                    required: ["step", "tool", "action", "finding"],
-                  },
-                },
-              },
-              required: ["summary", "citations", "tool_steps"],
-            },
-          },
-        }],
+        tools: toolsDef,
         tool_choice: { type: "function", function: { name: "submit_analysis" } },
-      }),
-    });
+        model: "google/gemini-3-flash-preview",
+        stream: false,
+      });
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI error:", aiResponse.status);
+      const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+      if (toolCall?.function?.arguments) {
+        try { analysis = JSON.parse(toolCall.function.arguments); } catch {
+          analysis = { summary: aiResult.choices?.[0]?.message?.content || "Analysis complete", citations: [], tool_steps: [] };
+        }
+      } else if (aiResult.choices?.[0]?.message?.content) {
+        try { analysis = JSON.parse(aiResult.choices[0].message.content); } catch {
+          analysis = { summary: aiResult.choices[0].message.content, citations: [], tool_steps: [] };
+        }
+      }
+    } catch (aiErr: any) {
+      console.error("deep-dive AI error:", aiErr?.message);
       await supabase.from("deep_dive_runs").update({
         status: "failed",
-        error_message: `AI error: ${aiResponse.status}`,
+        error_message: `AI error: ${aiErr?.message?.slice(0, 100)}`,
         completed_at: new Date().toISOString(),
       }).eq("id", runId);
       return new Response(JSON.stringify({ run_id: runId, status: "failed" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    const aiResult = await aiResponse.json();
-    let analysis: any = {};
-
-    // Parse tool call result
-    const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall?.function?.arguments) {
-      try {
-        analysis = JSON.parse(toolCall.function.arguments);
-      } catch {
-        // Fallback: use message content
-        analysis = { summary: aiResult.choices?.[0]?.message?.content || "Analysis complete", citations: [], tool_steps: [] };
-      }
-    } else if (aiResult.choices?.[0]?.message?.content) {
-      // Try parsing JSON from content
-      try {
-        analysis = JSON.parse(aiResult.choices[0].message.content);
-      } catch {
-        analysis = { summary: aiResult.choices[0].message.content, citations: [], tool_steps: [] };
-      }
     }
 
     // Merge evidence URLs into citations
