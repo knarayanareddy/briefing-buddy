@@ -67,14 +67,8 @@ serve(async (req: Request) => {
       .map((e: any, i: number) => `[${i + 1}] ${e.provider}/${e.source_id}: ${e.title}\n${e.summary || "(no summary)"}${e.url ? `\nURL: ${e.url}` : ""}`)
       .join("\n\n");
 
-    // Build the AI prompt
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      await supabase.from("deep_dive_runs").update({ status: "failed", error_message: "AI not configured" }).eq("id", runId);
-      return new Response(JSON.stringify({ run_id: runId, status: "failed", error: "AI not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Build the AI prompt — route through orqClient
+    const { orqCall } = await import("../_shared/orqClient.ts");
 
     const systemPrompt = type === "verify"
       ? `You are a fact-checking AI agent. Verify the following claim(s) using the provided evidence. For each claim:
