@@ -49,18 +49,12 @@ export function ActionCard({ card, dialogue, segmentIndex, totalSegments, script
   const [actionRecord, setActionRecord] = useState<ActionRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!card || !card.is_active) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-6 text-center">
-        <p className="text-muted-foreground text-sm">No action for this segment</p>
-      </div>
-    );
-  }
+  const isActive = card && card.is_active;
+  const isActionable = isActive && (card.card_type === "approval" || !!card.action_type || !!card.provider);
+  const isWeather = isActive && card.card_type === "weather_widget";
 
-  const isActionable = card.card_type === "approval" || card.action_type || card.provider;
-  const isWeather = card.card_type === "weather_widget";
-
-  const handleLegacyAction = async () => {
+  const handleLegacyAction = useCallback(async () => {
+    if (!card) return;
     if (card.card_type === "save_reading_list") {
       try {
         await addToReadingList({
