@@ -147,19 +147,25 @@ export async function processNextSegments(
         bRollUrl = `https://picsum.photos/seed/${seed}/1280/720`;
       }
 
-      // Avatar video generation via Fal.ai
+      // Avatar video generation via Fal.ai (with 30s timeout)
       let avatarUrl: string | null = null;
       if (config.FAL_KEY) {
         try {
-          const { falAvatarProvider } = await import("./providers/falAvatar.ts");
-          const avatarRes = await falAvatarProvider.generateVideo({
-            dialogue: seg.dialogue || "",
-            personaTitle,
-          });
+          const avatarPromise = (async () => {
+            const { falAvatarProvider } = await import("./providers/falAvatar.ts");
+            return await falAvatarProvider.generateVideo({
+              dialogue: seg.dialogue || "",
+              personaTitle,
+            });
+          })();
+          const timeoutPromise = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error("Avatar generation timed out (30s)")), 30_000)
+          );
+          const avatarRes = await Promise.race([avatarPromise, timeoutPromise]);
           avatarUrl = avatarRes.url;
           console.log(`Avatar video generated for segment ${seg.segment_id}`);
         } catch (e: any) {
-          console.warn(`Fal avatar failed for segment ${seg.segment_id}: ${e.message}`);
+          console.warn(`Fal avatar skipped for segment ${seg.segment_id}: ${e.message}`);
         }
       } else {
         console.warn("FAL_KEY not configured, skipping avatar video generation");
