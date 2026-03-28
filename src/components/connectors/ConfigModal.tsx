@@ -335,6 +335,47 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
             </div>
           </div>
         );
+      case "stocks":
+        return (
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Stock Tickers</Label>
+              <Input 
+                placeholder="e.g. AAPL, GOOGL, MSFT, TSLA"
+                value={config.tickers || ""}
+                onChange={(e) => setConfig({ ...config, tickers: e.target.value })}
+                className="sa-input-premium"
+              />
+              <p className="text-[10px] text-white/40">Comma-separated ticker symbols. Data sourced from Yahoo Finance (free, no API key needed).</p>
+            </div>
+          </div>
+        );
+      case "notion":
+        return (
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Notion API Token</Label>
+              <Input 
+                type="password"
+                placeholder="ntn_****************"
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                className="sa-input-premium font-mono"
+              />
+              <p className="text-[9px] text-white/30 uppercase tracking-widest">Leave blank to keep existing. Create at notion.so/my-integrations.</p>
+            </div>
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Database / Page IDs to Monitor</Label>
+              <Input 
+                placeholder="e.g. abc123, def456..."
+                value={config.page_ids || ""}
+                onChange={(e) => setConfig({ ...config, page_ids: e.target.value })}
+                className="sa-input-premium"
+              />
+              <p className="text-[10px] text-white/40">Comma-separated Notion page or database IDs. Share them with your integration first.</p>
+            </div>
+          </div>
+        );
       default:
         return <p className="text-muted-foreground text-sm">Generic configuration for {title}.</p>;
     }
