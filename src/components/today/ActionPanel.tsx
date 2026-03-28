@@ -12,11 +12,13 @@ interface ActionPanelProps {
   card: any;
   dialogue: string;
   scriptId?: string | null;
+  segmentId?: number;
   onEvidenceClick?: (sourceId: string) => void;
 }
 
-export default function ActionPanel({ card, dialogue, scriptId, onEvidenceClick }: ActionPanelProps) {
+export default function ActionPanel({ card, dialogue, scriptId, segmentId, onEvidenceClick }: ActionPanelProps) {
   const [isSaved, setIsSaved] = useState(false);
+  const [showDeepDive, setShowDeepDive] = useState(false);
 
   useEffect(() => {
     setIsSaved(false);
