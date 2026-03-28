@@ -351,6 +351,7 @@ export default function Today() {
             card={currentSegment?.ui_action_card} 
             dialogue={currentSegment?.dialogue || ""} 
             scriptId={scriptId}
+            segmentId={currentSegment?.segment_id}
             onEvidenceClick={(sourceId) => setEvidenceSourceId(sourceId)}
           />
         </div>
