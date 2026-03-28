@@ -1,20 +1,20 @@
 import { SegmentPlan } from "./planner.ts";
 import { orqGenerateJSON } from "./orqClient.ts";
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 /**
  * Tightened realizer — one segment at a time.
  * ui_action_card is ALWAYS post-overwritten from the plan. The LLM cannot mutate it.
  * runware_b_roll_prompt is forced null when b_roll_hint is null.
  * 
- * Routes through orqClient with retry + fallback to direct Lovable AI Gateway.
+ * Routes through orqClient with retry + fallback to direct OpenAI API.
  */
 export async function realizeSegment(
   segmentId: number,
   plan: SegmentPlan,
   persona: string,
-  _apiKey: string // kept for signature compat, ignored — uses LOVABLE_API_KEY
+  _apiKey: string // kept for signature compat
 ): Promise<any> {
   const systemPrompt = buildSystemPrompt(segmentId, persona);
   const userPayload = {
@@ -32,7 +32,7 @@ export async function realizeSegment(
   const orqResult = await orqGenerateJSON({
     task_type: "realize_segment",
     messages,
-    model: "google/gemini-3-flash-preview",
+    model: "gpt-4o-mini",
     temperature: 0.2,
     validate: (parsed: any) => {
       if (!parsed.dialogue || typeof parsed.dialogue !== "string") throw new Error("Missing dialogue");
@@ -49,7 +49,7 @@ export async function realizeSegment(
     return parsed;
   }
 
-  // Fallback: direct call (same as original implementation)
+  // Fallback: direct call
   console.warn(`realizeSegment fallback for segment ${segmentId}`);
   return await directRealize(segmentId, plan, persona, systemPrompt, userPayload);
 }
@@ -76,7 +76,7 @@ export async function repairSegment(
   const orqResult = await orqGenerateJSON({
     task_type: "repair_segment",
     messages,
-    model: "google/gemini-3-flash-preview",
+    model: "gpt-4o-mini",
     temperature: 0,
   });
 
@@ -88,16 +88,16 @@ export async function repairSegment(
   }
 
   // Fallback: direct call
-  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) throw new Error("OPENAI_API_KEY is not configured");
 
-  const response = await fetch(LOVABLE_AI_URL, {
+  const response = await fetch(OPENAI_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${lovableApiKey}`,
+      "Authorization": `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages, temperature: 0 }),
+    body: JSON.stringify({ model: "gpt-4o-mini", messages, temperature: 0 }),
   });
 
   if (!response.ok) {
@@ -147,17 +147,17 @@ async function directRealize(
   systemPrompt: string,
   userPayload: any,
 ): Promise<any> {
-  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!lovableApiKey) throw new Error("LOVABLE_API_KEY is not configured");
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) throw new Error("OPENAI_API_KEY is not configured");
 
-  const response = await fetch(LOVABLE_AI_URL, {
+  const response = await fetch(OPENAI_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${lovableApiKey}`,
+      "Authorization": `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: JSON.stringify(userPayload) },
@@ -169,8 +169,8 @@ async function directRealize(
   if (!response.ok) {
     const errText = await response.text();
     if (response.status === 429) throw new Error("AI rate limit exceeded. Please try again shortly.");
-    if (response.status === 402) throw new Error("AI credits exhausted. Please add funds to your workspace.");
-    throw new Error(`AI gateway error (${response.status}): ${errText.slice(0, 200)}`);
+    if (response.status === 402) throw new Error("AI credits exhausted. Please add funds.");
+    throw new Error(`OpenAI API error (${response.status}): ${errText.slice(0, 200)}`);
   }
 
   const result = await response.json();
