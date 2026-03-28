@@ -132,6 +132,7 @@ export async function processNextSegments(
   if (jobErr || !job) throw new Error("Job not found");
   const script = job.briefing_scripts.script_json;
   const personaTitle = script.script_metadata?.persona_applied || "Professional";
+  const timelineSegments = script.timeline_segments || [];
 
   // 2. Fetch pending segments
   const { data: segments, error: segErr } = await supabase
