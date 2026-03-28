@@ -33,7 +33,7 @@ serve(async (req: Request) => {
   const userId = auth.user_id!;
 
   // ── PHASE 0: Usage Limits ────────────────────────────────────────────────
-  const GEN_LIMIT = parseInt(Deno.env.get("DAILY_GENERATE_LIMIT") || "10");
+  const GEN_LIMIT = parseInt(Deno.env.get("DAILY_GENERATE_LIMIT") || "50");
   const { exceeded, current } = await checkLimitExceeded(supabase, userId, "generate", GEN_LIMIT);
   
   if (exceeded) {
