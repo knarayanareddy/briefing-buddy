@@ -39,6 +39,8 @@ const iconMap: Record<string, React.ReactNode> = {
   save_reading_list: <Bookmark className="w-5 h-5" />,
   summary: <CheckCircle2 className="w-5 h-5" />,
   approval: <CheckCircle2 className="w-5 h-5" />,
+  slack_post_message: <MessageSquare className="w-5 h-5" />,
+  stock_alert: <TrendingUp className="w-5 h-5" />,
 };
 
 type ActionLifecycle = "idle" | "proposing" | "proposed" | "approving" | "approved" | "executing" | "completed" | "failed" | "canceled";
