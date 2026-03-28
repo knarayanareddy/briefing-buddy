@@ -23,6 +23,7 @@ import ActionPanel from "@/components/today/ActionPanel";
 import BriefControls from "@/components/today/BriefControls";
 import BriefEmptyState from "@/components/today/BriefEmptyState";
 import ShareDialog from "@/components/share/ShareDialog";
+import EvidenceDrawer from "@/components/today/EvidenceDrawer";
 
 type AppState = "idle" | "generating" | "script_ready" | "rendering" | "ready" | "playing" | "paused";
 
