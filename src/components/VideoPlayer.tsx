@@ -115,13 +115,10 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
 
     (async () => {
       try {
+        const headers = await getTtsHeaders();
         const resp = await fetch(TTS_URL, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
+          headers,
           body: JSON.stringify({ text: dialogue }),
         });
 
@@ -132,9 +129,22 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
         }
 
         const data = await resp.json();
-        if (cancelled || !data.audioContent) return;
+        if (cancelled) return;
 
-        const audioUrl = `data:audio/mpeg;base64,${data.audioContent}`;
+        let audioUrl: string | null = null;
+        if (data.audio_url) {
+          audioUrl = data.audio_url;
+        } else if (data.audio_content) {
+          audioUrl = `data:audio/mpeg;base64,${data.audio_content}`;
+        } else if (data.audioContent) {
+          audioUrl = `data:audio/mpeg;base64,${data.audioContent}`;
+        }
+
+        if (!audioUrl) {
+          if (!cancelled) setTtsMode("browser");
+          return;
+        }
+
         ttsCache.set(cacheKey, audioUrl);
         audioRef.current = new Audio(audioUrl);
         audioRef.current.muted = isMuted;
