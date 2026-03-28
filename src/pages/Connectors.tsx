@@ -13,7 +13,8 @@ import {
   Plus,
   Key,
   Loader2,
-  Cloud
+  Cloud,
+  TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/connectors/ConnectorCard";
