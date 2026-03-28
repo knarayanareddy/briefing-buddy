@@ -338,6 +338,8 @@ export default function Today() {
           <ActionPanel 
             card={currentSegment?.ui_action_card} 
             dialogue={currentSegment?.dialogue || ""} 
+            scriptId={scriptId}
+            onEvidenceClick={(sourceId) => setEvidenceSourceId(sourceId)}
           />
         </div>
       </div>
