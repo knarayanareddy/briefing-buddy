@@ -74,6 +74,8 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
           await setConnectorSecret(provider, { pat: secret });
         } else if (provider === 'slack') {
           await setConnectorSecret(provider, { bot_token: secret });
+        } else if (provider === 'notion') {
+          await setConnectorSecret(provider, { api_token: secret });
         }
       }
 
