@@ -41,7 +41,7 @@ serve(async (req: Request) => {
 
     await logAudit(supabase, userId, "sync_gmail", { items_synced });
     
-    return new Response(JSON.stringify({ ok: true, items_synced, message }), {
+    return new Response(JSON.stringify({ ok: true, items_synced }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
