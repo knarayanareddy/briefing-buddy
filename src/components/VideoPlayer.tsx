@@ -43,7 +43,7 @@ export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnde
   const [isMuted, setIsMuted] = useState(false);
   const [ttsLoading, setTtsLoading] = useState(false);
   const [showSubtitle, setShowSubtitle] = useState(false);
-  const [ttsMode, setTtsMode] = useState<"elevenlabs" | "browser">("browser");
+  const [ttsMode, setTtsMode] = useState<"elevenlabs" | "browser">("elevenlabs");
   const prevDialogueRef = useRef<string | null>(null);
 
   const hasBRollVideo = bRollUrl && isVideoUrl(bRollUrl);
