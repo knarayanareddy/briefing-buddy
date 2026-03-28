@@ -45,6 +45,7 @@ export function useVoiceChat({ scriptId, currentSegmentId, contextSegments, onCo
 
   const recognitionRef = useRef<any>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const responseCacheRef = useRef<Map<string, { content: string; citedSources?: VoiceMessage["citedSources"]; ts: number }>>(new Map());
 
   const getAuthHeaders = useCallback(async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -86,6 +87,8 @@ export function useVoiceChat({ scriptId, currentSegmentId, contextSegments, onCo
   }, [stopSpeaking]);
 
   const askQuestion = useCallback(async (question: string) => {
+    if (isProcessing) return;
+
     setIsProcessing(true);
     setError(null);
 
@@ -101,7 +104,21 @@ export function useVoiceChat({ scriptId, currentSegmentId, contextSegments, onCo
       return;
     }
 
-    setMessages(prev => [...prev, { role: "user", content: question }]);
+    const normalizedQuestion = question.trim();
+    const cacheKey = `${scriptId || "none"}:${currentSegmentId || "none"}:${normalizedQuestion.toLowerCase()}`;
+    const cached = responseCacheRef.current.get(cacheKey);
+
+    setMessages(prev => [...prev, { role: "user", content: normalizedQuestion }]);
+
+    if (cached && Date.now() - cached.ts < 3 * 60 * 1000) {
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: cached.content, citedSources: cached.citedSources },
+      ]);
+      speak(cached.content);
+      setIsProcessing(false);
+      return;
+    }
 
     try {
       const headers = await getAuthHeaders();
@@ -109,7 +126,7 @@ export function useVoiceChat({ scriptId, currentSegmentId, contextSegments, onCo
         method: "POST",
         headers,
         body: JSON.stringify({
-          question,
+          question: normalizedQuestion,
           script_id: scriptId,
           segment_id: currentSegmentId,
           context_segments: contextSegments,
@@ -118,10 +135,18 @@ export function useVoiceChat({ scriptId, currentSegmentId, contextSegments, onCo
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: "Request failed" }));
-        throw new Error(errData.error || `Error ${res.status}`);
+        const err: any = new Error(errData.error || `Error ${res.status}`);
+        err.status = res.status;
+        throw err;
       }
 
       const data = await res.json();
+      responseCacheRef.current.set(cacheKey, {
+        content: data.answer,
+        citedSources: data.cited_sources,
+        ts: Date.now(),
+      });
+
       setMessages(prev => [
         ...prev,
         { role: "assistant", content: data.answer, citedSources: data.cited_sources },
@@ -129,12 +154,28 @@ export function useVoiceChat({ scriptId, currentSegmentId, contextSegments, onCo
       speak(data.answer);
     } catch (e: any) {
       const errMsg = e.message || "Failed to get answer";
-      setError(errMsg);
-      setMessages(prev => [...prev, { role: "assistant", content: `Error: ${errMsg}` }]);
+      const isRateLimit = e?.status === 429 || /rate\s*limit/i.test(errMsg);
+
+      if (isRateLimit) {
+        const localSegment =
+          contextSegments?.find(s => s.segment_id === currentSegmentId)?.dialogue ||
+          contextSegments?.[0]?.dialogue;
+
+        const fallback = localSegment
+          ? `I’m temporarily rate-limited. Quick recap from this segment: ${localSegment.slice(0, 220)} Try again in about a minute for more detail.`
+          : "I’m temporarily rate-limited right now. Please wait about a minute and ask again.";
+
+        setMessages(prev => [...prev, { role: "assistant", content: fallback }]);
+        speak(fallback);
+        setError(null);
+      } else {
+        setError(errMsg);
+        setMessages(prev => [...prev, { role: "assistant", content: `Error: ${errMsg}` }]);
+      }
     } finally {
       setIsProcessing(false);
     }
-  }, [scriptId, currentSegmentId, contextSegments, getAuthHeaders, onCommand, speak]);
+  }, [scriptId, currentSegmentId, contextSegments, getAuthHeaders, isProcessing, onCommand, speak]);
 
   const startListening = useCallback(() => {
     setError(null);

@@ -42,6 +42,8 @@ serve(async (req: Request) => {
     // Fetch grounding evidence if we have a script_id
     let evidenceContext = "";
     const citedSources: Array<{ source_id: string; title: string; url?: string }> = [];
+    let segmentSnippets: string[] = [];
+    let sourceSummaries: string[] = [];
 
     if (script_id && userId) {
       const supabase = createClient(config.SUPABASE_URL!, config.SUPABASE_SERVICE_ROLE_KEY!);
@@ -67,6 +69,10 @@ serve(async (req: Request) => {
             })
           : segments;
 
+        segmentSnippets = targetSegments
+          .map((s: any) => `Segment ${s.segment_id}: ${String(s.dialogue || "").slice(0, 220)}`)
+          .filter(Boolean);
+
         targetSegments.forEach((seg: any) => {
           if (seg.grounding_source_id) {
             seg.grounding_source_id.split(",").forEach((id: string) => sourceIds.add(id.trim()));
@@ -81,6 +87,10 @@ serve(async (req: Request) => {
             .in("source_id", Array.from(sourceIds));
 
           if (sources && sources.length > 0) {
+            sourceSummaries = sources
+              .map((s: any) => `${s.title || "Untitled"}: ${String(s.summary || "(no summary)").slice(0, 160)}`)
+              .filter(Boolean);
+
             evidenceContext = "\n\nEvidence from user's data sources:\n" +
               sources.map((s: any, i: number) => {
                 citedSources.push({ source_id: s.source_id, title: s.title || "Untitled", url: s.url });
@@ -104,6 +114,12 @@ serve(async (req: Request) => {
         .join("\n");
       if (inlineCtx) {
         evidenceContext = `\n\nAdditional context:\n${inlineCtx}${evidenceContext}`;
+      }
+
+      if (segmentSnippets.length === 0) {
+        segmentSnippets = context_segments
+          .map((s: any) => `Segment ${s.segment_id}: ${String(s.dialogue || "").slice(0, 220)}`)
+          .filter(Boolean);
       }
     }
 
@@ -132,8 +148,14 @@ ${evidenceContext}`;
       answer = aiResult.choices?.[0]?.message?.content || "I couldn't generate a response.";
     } catch (err: any) {
       if (err.message === "Rate limited") {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        const fallbackAnswer = buildRateLimitFallbackAnswer(question, segmentSnippets, sourceSummaries);
+        return new Response(JSON.stringify({
+          answer: fallbackAnswer,
+          cited_sources: citedSources,
+          segment_id: segment_id || null,
+          degraded: true,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (err.message === "Credits exhausted") {
@@ -162,3 +184,25 @@ ${evidenceContext}`;
     );
   }
 });
+
+function buildRateLimitFallbackAnswer(
+  question: string,
+  segmentSnippets: string[],
+  sourceSummaries: string[]
+): string {
+  const normalized = question.toLowerCase();
+  const topSegment = segmentSnippets[0] || "";
+  const topSource = sourceSummaries[0] || "";
+
+  if (!topSegment && !topSource) {
+    return "I’m temporarily rate-limited right now. Please try again in about 30–60 seconds.";
+  }
+
+  if (/(more|detail|explain|why|how|deeper|context)/i.test(normalized)) {
+    const detailLine = topSegment || topSource;
+    return `I’m temporarily rate-limited, but here’s a quick grounded recap: ${detailLine} Try again in about a minute for a deeper answer.`;
+  }
+
+  const summaryLine = topSegment || topSource;
+  return `I’m temporarily rate-limited. Based on your current briefing: ${summaryLine} Ask again shortly and I’ll provide a fuller response.`;
+}
