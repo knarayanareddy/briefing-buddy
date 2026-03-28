@@ -1,0 +1,1 @@
+UPDATE connector_health SET status = 'inactive', consecutive_failures = 0, last_error_code = NULL, last_error_message = NULL WHERE provider = 'rss' AND status = 'error'; UPDATE connector_sync_runs SET status = 'completed' WHERE provider = 'rss' AND status = 'running';
