@@ -71,7 +71,7 @@ export function ActionCard({ card, dialogue, segmentIndex, totalSegments, script
     if (card.action_payload) {
       window.open(card.action_payload, "_blank");
     }
-  };
+  }, [card]);
 
   const handlePropose = useCallback(async () => {
     if (!card.provider && !card.action_type) return;
