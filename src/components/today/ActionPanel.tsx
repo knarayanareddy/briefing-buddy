@@ -1,21 +1,24 @@
 import { ActionCard } from "@/components/ActionCard";
-import { Copy, ExternalLink, Info, Activity, Shield, Zap, Database } from "lucide-react";
+import { Copy, ExternalLink, Info, Activity, Shield, Zap, Database, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Bookmark, Check } from "lucide-react";
 import { addToReadingList } from "@/lib/api";
+import DeepDivePanel from "@/components/today/DeepDivePanel";
 
 interface ActionPanelProps {
   card: any;
   dialogue: string;
   scriptId?: string | null;
+  segmentId?: number;
   onEvidenceClick?: (sourceId: string) => void;
 }
 
-export default function ActionPanel({ card, dialogue, scriptId, onEvidenceClick }: ActionPanelProps) {
+export default function ActionPanel({ card, dialogue, scriptId, segmentId, onEvidenceClick }: ActionPanelProps) {
   const [isSaved, setIsSaved] = useState(false);
+  const [showDeepDive, setShowDeepDive] = useState(false);
 
   useEffect(() => {
     setIsSaved(false);
@@ -115,6 +118,17 @@ export default function ActionPanel({ card, dialogue, scriptId, onEvidenceClick 
             </div>
           </div>
         )}
+
+        {/* Deep Dive / Verify Section */}
+        <div className="pt-6 border-t border-white/5 space-y-4">
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-white/30">AI Analysis</h4>
+          <DeepDivePanel
+            evidenceSourceIds={card?.grounding_source_id ? card.grounding_source_id.split(",").map((s: string) => s.trim()) : ["system_status"]}
+            scriptId={scriptId}
+            segmentId={segmentId}
+            onClose={() => {}}
+          />
+        </div>
 
         <div className="pt-8 border-t border-white/5 space-y-6">
            <h4 className="text-[10px] font-black uppercase tracking-widest text-white/30">System Parity</h4>
