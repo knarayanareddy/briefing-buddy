@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect /* hmr-fix */ } from "react";
 import { Mic, MicOff, X, Send, VolumeX, MessageSquare, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVoiceChat } from "@/hooks/useVoiceChat";
