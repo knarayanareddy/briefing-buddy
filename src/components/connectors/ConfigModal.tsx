@@ -153,6 +153,15 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
     }
   };
 
+  const handleSlackConnect = async () => {
+    try {
+      const res = await startSlackOAuth(window.location.origin + "/oauth/slack/callback");
+      if (res.url) window.location.href = res.url;
+    } catch (err: any) {
+      toast.error("Failed to start Slack OAuth: " + err.message);
+    }
+  };
+
   const renderFields = () => {
     if (isLoading) {
       return (
