@@ -12,6 +12,7 @@ import Vault from "./pages/Vault.tsx";
 import Auth from "./pages/Auth.tsx";
 import GoogleOAuthCallback from "./pages/GoogleOAuthCallback.tsx";
 import SlackOAuthCallback from "./pages/SlackOAuthCallback.tsx";
+import GitHubOAuthCallback from "./pages/GitHubOAuthCallback.tsx";
 import ReadingList from "./pages/ReadingList.tsx";
 import History from "./pages/History.tsx";
 import Settings from "./pages/Settings.tsx";
@@ -60,6 +61,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/oauth/google/callback" element={<GoogleOAuthCallback />} />
           <Route path="/oauth/slack/callback" element={<SlackOAuthCallback />} />
+          <Route path="/oauth/github/callback" element={<GitHubOAuthCallback />} />
           <Route path="/share/:token" element={<SharedBrief />} />
           <Route path="/" element={<Index />} />
           <Route element={<RequireAuth><AppShell /></RequireAuth>}>
