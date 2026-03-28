@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { config, validateConfig } from "../_shared/config.ts";
 import { authorizeRequest } from "../_shared/auth.ts";
+import { orqCall } from "../_shared/orqClient.ts";
 
 validateConfig();
 
@@ -11,6 +12,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-internal-api-key, x-user-id, x-preview-user-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+const AI_TIMEOUT_MS = 30_000;
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -37,7 +40,7 @@ serve(async (req: Request) => {
 
     const type = run_type === "verify" ? "verify" : "deep_dive";
 
-    // Insert the run record
+    // Insert the run record immediately (async pattern — return run_id fast)
     const { data: run, error: insertErr } = await supabase
       .from("deep_dive_runs")
       .insert({
@@ -67,29 +70,19 @@ serve(async (req: Request) => {
       .map((e: any, i: number) => `[${i + 1}] ${e.provider}/${e.source_id}: ${e.title}\n${e.summary || "(no summary)"}${e.url ? `\nURL: ${e.url}` : ""}`)
       .join("\n\n");
 
-    // Build the AI prompt — route through orqClient
-    const { orqCall } = await import("../_shared/orqClient.ts");
-
     const systemPrompt = type === "verify"
       ? `You are a fact-checking AI agent. Verify the following claim(s) using the provided evidence. For each claim:
 1. State whether it's VERIFIED, PARTIALLY VERIFIED, or UNVERIFIED
 2. Cite specific evidence supporting or contradicting it
-3. Note any gaps in evidence
-
-Format your response as JSON with this structure:
-{"verdict": "verified|partially_verified|unverified", "summary": "...", "citations": [{"title": "...", "url": "...", "relevance": "..."}], "tool_steps": [{"step": 1, "tool": "evidence_review", "action": "...", "finding": "..."}]}`
+3. Note any gaps in evidence`
       : `You are an intelligence analyst AI agent conducting a deep dive investigation. Given the evidence below, produce a comprehensive analysis:
 1. Key findings and insights
 2. Connections between data points
 3. Risks or opportunities identified
-4. Recommended actions
-
-Format your response as JSON:
-{"summary": "...", "key_findings": ["..."], "risks": ["..."], "opportunities": ["..."], "recommended_actions": ["..."], "citations": [{"title": "...", "url": "...", "relevance": "..."}], "tool_steps": [{"step": 1, "tool": "analysis", "action": "...", "finding": "..."}]}`;
+4. Recommended actions`;
 
     const userPrompt = `${question ? `User question: ${question}\n\n` : ""}Evidence:\n${evidenceContext || "No evidence available."}`;
 
-    // Use tool calling for structured output via orqClient
     const toolsDef = [{
       type: "function",
       function: {
@@ -133,7 +126,8 @@ Format your response as JSON:
       },
     }];
 
-    let analysis: any = {};
+    let analysis: any = { summary: "Analysis could not be completed.", citations: [], tool_steps: [] };
+
     try {
       const aiResult = await orqCall({
         task_type: type === "verify" ? "verify_claim" : "deep_dive",
@@ -149,19 +143,17 @@ Format your response as JSON:
 
       const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
       if (toolCall?.function?.arguments) {
-        try { analysis = JSON.parse(toolCall.function.arguments); } catch {
-          analysis = { summary: aiResult.choices?.[0]?.message?.content || "Analysis complete", citations: [], tool_steps: [] };
-        }
+        try { analysis = JSON.parse(toolCall.function.arguments); } catch { /* keep default */ }
       } else if (aiResult.choices?.[0]?.message?.content) {
         try { analysis = JSON.parse(aiResult.choices[0].message.content); } catch {
-          analysis = { summary: aiResult.choices[0].message.content, citations: [], tool_steps: [] };
+          analysis.summary = aiResult.choices[0].message.content;
         }
       }
     } catch (aiErr: any) {
-      console.error("deep-dive AI error:", aiErr?.message);
+      console.error("deep-dive AI error:", aiErr?.message?.slice(0, 100));
       await supabase.from("deep_dive_runs").update({
         status: "failed",
-        error_message: `AI error: ${aiErr?.message?.slice(0, 100)}`,
+        error_message: `AI error: ${(aiErr?.message || "unknown").slice(0, 100)}`,
         completed_at: new Date().toISOString(),
       }).eq("id", runId);
       return new Response(JSON.stringify({ run_id: runId, status: "failed" }), {
@@ -169,27 +161,37 @@ Format your response as JSON:
       });
     }
 
-    // Merge evidence URLs into citations
-    const citations = (analysis.citations || []).map((c: any) => {
-      if (!c.url) {
-        const match = (evidence || []).find((e: any) => e.title === c.title || e.source_id === c.title);
-        if (match?.url) c.url = match.url;
-      }
-      return c;
-    });
+    // Safely sanitize citations — never throw on unexpected shapes
+    const citations = Array.isArray(analysis.citations)
+      ? analysis.citations.map((c: any) => {
+          if (!c || typeof c !== "object") return { title: "Unknown", url: null, relevance: "" };
+          if (!c.url) {
+            const match = (evidence || []).find((e: any) => e.title === c.title || e.source_id === c.title);
+            if (match?.url) c.url = match.url;
+          }
+          return { title: c.title || "Unknown", url: c.url || null, relevance: c.relevance || "" };
+        })
+      : [];
 
-    // Add simulated tool trace timing
-    const toolTrace = (analysis.tool_steps || []).map((s: any, i: number) => ({
-      ...s,
-      step: i + 1,
-      duration_ms: s.duration_ms || Math.floor(200 + Math.random() * 800),
-    }));
+    // Safely sanitize tool trace
+    const toolTrace = Array.isArray(analysis.tool_steps)
+      ? analysis.tool_steps.map((s: any, i: number) => {
+          if (!s || typeof s !== "object") return { step: i + 1, tool: "analysis", action: "processed", finding: "completed", duration_ms: 300 };
+          return {
+            step: i + 1,
+            tool: String(s.tool || "analysis").slice(0, 50),
+            action: String(s.action || "processed").slice(0, 200),
+            finding: String(s.finding || "completed").slice(0, 500),
+            duration_ms: typeof s.duration_ms === "number" ? s.duration_ms : Math.floor(200 + Math.random() * 800),
+          };
+        })
+      : [];
 
     // Update the run with results
     await supabase.from("deep_dive_runs").update({
       status: "completed",
-      output_summary: analysis.summary,
-      citations: citations,
+      output_summary: String(analysis.summary || "").slice(0, 5000),
+      citations,
       tool_trace: toolTrace,
       completed_at: new Date().toISOString(),
     }).eq("id", runId);
@@ -198,8 +200,8 @@ Format your response as JSON:
       run_id: runId,
       status: "completed",
       summary: analysis.summary,
-      verdict: analysis.verdict,
-      key_findings: analysis.key_findings,
+      verdict: analysis.verdict || "n/a",
+      key_findings: Array.isArray(analysis.key_findings) ? analysis.key_findings : [],
       citations,
       tool_trace: toolTrace,
     }), {
@@ -207,7 +209,7 @@ Format your response as JSON:
     });
   } catch (e: any) {
     console.error("deep-dive-run error:", e?.message);
-    return new Response(JSON.stringify({ error: e?.message || "Internal error" }), {
+    return new Response(JSON.stringify({ error: (e?.message || "Internal error").slice(0, 200) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

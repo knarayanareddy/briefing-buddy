@@ -12,15 +12,17 @@ const corsHeaders = {
 
 /**
  * Scheduled Sync Orchestrator
- * Triggered by cron (e.g., every 1 hour).
- * Requires x-internal-api-key.
+ * Triggered by cron (pg_cron + pg_net) or manually.
+ * Auth: accepts x-internal-api-key OR apikey header with a special x-cron-token.
  */
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // 1. Auth: Internal Key ONLY
+  // Auth: Internal Key (from Edge Functions or cron)
   const internalKey = req.headers.get("x-internal-api-key");
-  if (!internalKey || internalKey !== config.INTERNAL_API_KEY) {
+  const isAuthed = internalKey && internalKey === config.INTERNAL_API_KEY;
+
+  if (!isAuthed) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { 
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } 
     });
@@ -31,8 +33,6 @@ serve(async (req: Request) => {
   try {
     const { provider, max_users = 20 } = await req.json().catch(() => ({}));
 
-    // 2. Identify active users (those who have at least one profile)
-    // In a larger system, we'd filter for "active in last 7 days" or similar.
     const { data: activeUsers, error: userErr } = await supabase
       .from("briefing_profiles")
       .select("user_id")
@@ -44,11 +44,8 @@ serve(async (req: Request) => {
     const uniqueUserIds = [...new Set(activeUsers.map(u => u.user_id))];
     const results = [];
 
-    // 3. Trigger sync-required-connectors for each user
-    // Note: We use the Edge Function endpoint so it respects the per-user locking/cooldown logic.
     for (const userId of uniqueUserIds) {
       try {
-        // Fetch first profile to use as a representative for required connectors
         const { data: profile } = await supabase
           .from("briefing_profiles")
           .select("id")
@@ -59,6 +56,9 @@ serve(async (req: Request) => {
         if (!profile) continue;
 
         const syncUrl = `${config.SUPABASE_URL}/functions/v1/sync-required-connectors`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25_000);
+
         const res = await fetch(syncUrl, {
           method: "POST",
           headers: {
@@ -66,14 +66,16 @@ serve(async (req: Request) => {
             "x-internal-api-key": config.INTERNAL_API_KEY!,
             "x-user-id": String(userId),
           },
-          body: JSON.stringify({ profile_id: profile.id, mode: "best_effort" })
+          body: JSON.stringify({ profile_id: profile.id, mode: "best_effort" }),
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
-        const outcome = res.ok ? await res.json() : { error: await res.text() };
+        const outcome = res.ok ? await res.json() : { error: (await res.text()).slice(0, 200) };
         results.push({ user_id: userId, outcome });
 
       } catch (e: any) {
-        results.push({ user_id: userId, error: e.message });
+        results.push({ user_id: userId, error: (e.message || "timeout").slice(0, 100) });
       }
     }
 

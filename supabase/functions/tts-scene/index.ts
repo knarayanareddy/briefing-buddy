@@ -13,6 +13,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const TTS_TIMEOUT_MS = 15_000;
+const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // George
+
 async function hashText(text: string): Promise<string> {
   const data = new TextEncoder().encode(text);
   const hash = await crypto.subtle.digest("SHA-256", data);
@@ -42,11 +45,12 @@ serve(async (req: Request) => {
       });
     }
 
-    const voiceId = voice_id || "JBFqnCBsd6RMkjVDRZzb"; // George
-    const textHash = await hashText(text.slice(0, 5000));
+    const voiceId = voice_id || DEFAULT_VOICE_ID;
+    const trimmedText = text.slice(0, 5000);
+    const textHash = await hashText(trimmedText);
     const format = "mp3";
 
-    // Check cache
+    // Check cache first
     const { data: cached } = await supabase
       .from("tts_audio_cache")
       .select("storage_path, duration_seconds")
@@ -57,7 +61,6 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     if (cached?.storage_path) {
-      // Return cached audio URL
       const { data: signedUrl } = await supabase.storage
         .from("tts-audio")
         .createSignedUrl(cached.storage_path, 3600);
@@ -71,9 +74,10 @@ serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // If signed URL fails (bucket missing), fall through to generate
     }
 
-    // Generate TTS via ElevenLabs
+    // Generate TTS via ElevenLabs with timeout
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
     if (!ELEVENLABS_API_KEY) {
       return new Response(JSON.stringify({ error: "ElevenLabs not configured" }), {
@@ -81,41 +85,54 @@ serve(async (req: Request) => {
       });
     }
 
-    const ttsResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
-      {
-        method: "POST",
-        headers: {
-          "xi-api-key": ELEVENLABS_API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text: text.slice(0, 5000),
-          model_id: "eleven_turbo_v2_5",
-          voice_settings: {
-            stability: 0.6,
-            similarity_boost: 0.8,
-            style: 0.3,
-            use_speaker_boost: true,
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TTS_TIMEOUT_MS);
+
+    let ttsResponse: Response;
+    try {
+      ttsResponse = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": ELEVENLABS_API_KEY,
+            "Content-Type": "application/json",
           },
-        }),
+          body: JSON.stringify({
+            text: trimmedText,
+            model_id: "eleven_turbo_v2_5",
+            voice_settings: {
+              stability: 0.6,
+              similarity_boost: 0.8,
+              style: 0.3,
+              use_speaker_boost: true,
+            },
+          }),
+          signal: controller.signal,
+        }
+      );
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId);
+      if (fetchErr.name === "AbortError") {
+        return new Response(JSON.stringify({ error: "TTS timed out" }), {
+          status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-    );
+      throw fetchErr;
+    }
+    clearTimeout(timeoutId);
 
     if (!ttsResponse.ok) {
-      const errText = await ttsResponse.text();
       console.error("ElevenLabs error:", ttsResponse.status);
-      return new Response(JSON.stringify({ error: "TTS generation failed" }), {
+      return new Response(JSON.stringify({ error: `TTS failed (${ttsResponse.status})` }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const audioBuffer = await ttsResponse.arrayBuffer();
-
-    // Estimate duration (rough: mp3 at 128kbps)
     const durationSeconds = Math.round((audioBuffer.byteLength * 8) / 128000);
 
-    // Try to upload to storage
+    // Try to upload to storage for caching
     const storagePath = `${userId}/${textHash}.${format}`;
     const { error: uploadErr } = await supabase.storage
       .from("tts-audio")
@@ -125,7 +142,6 @@ serve(async (req: Request) => {
       });
 
     if (!uploadErr) {
-      // Cache the entry
       await supabase.from("tts_audio_cache").upsert({
         user_id: userId,
         voice_id: voiceId,
@@ -133,9 +149,8 @@ serve(async (req: Request) => {
         format,
         storage_path: storagePath,
         duration_seconds: durationSeconds,
-      }, { onConflict: "user_id,voice_id,text_hash,format" });
+      }, { onConflict: "user_id,voice_id,text_hash,format" }).catch(() => {});
 
-      // Return signed URL
       const { data: signedUrl } = await supabase.storage
         .from("tts-audio")
         .createSignedUrl(storagePath, 3600);
@@ -149,9 +164,11 @@ serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    } else {
+      console.warn("Storage upload failed (bucket may not exist), returning inline audio");
     }
 
-    // Fallback: return base64 audio inline
+    // Fallback: return base64 audio inline (works even without storage bucket)
     const audioBase64 = base64Encode(new Uint8Array(audioBuffer));
     return new Response(JSON.stringify({
       audio_content: audioBase64,
