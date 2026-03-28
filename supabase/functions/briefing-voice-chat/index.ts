@@ -36,13 +36,8 @@ serve(async (req: Request) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "AI gateway not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Import orqClient for routed LLM calls
+    const { orqCall } = await import("../_shared/orqClient.ts");
 
     // Fetch grounding evidence if we have a script_id
     let evidenceContext = "";
