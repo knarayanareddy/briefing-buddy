@@ -280,6 +280,16 @@ export default function Today() {
 
   const currentSegment = segments[currentIdx];
 
+  const handleVoiceCommand = (command: "pause" | "resume" | "repeat" | "skip" | "next" | "previous") => {
+    switch (command) {
+      case "pause": setAppState("paused"); break;
+      case "resume": setAppState("playing"); break;
+      case "repeat": setCurrentIdx(prev => prev); break;
+      case "skip": case "next": handleNext(); break;
+      case "previous": handlePrev(); break;
+    }
+  };
+
   // Fallback to curated b-roll when DB segment has no image or a generic placeholder
   const resolvedBRollUrl = (() => {
     const url = currentSegment?.b_roll_image_url;
