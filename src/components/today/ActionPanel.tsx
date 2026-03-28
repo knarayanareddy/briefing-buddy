@@ -7,7 +7,6 @@ import { useState, useEffect } from "react";
 import { Bookmark, Check } from "lucide-react";
 import { addToReadingList } from "@/lib/api";
 import DeepDivePanel from "@/components/today/DeepDivePanel";
-import { addToReadingList } from "@/lib/api";
 
 interface ActionPanelProps {
   card: any;
