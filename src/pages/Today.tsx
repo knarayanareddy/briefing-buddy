@@ -49,6 +49,7 @@ export default function Today() {
   const [hasSession, setHasSession] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [evidenceSourceId, setEvidenceSourceId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const rawProfileId = localStorage.getItem("selectedProfileId");
