@@ -1,0 +1,1 @@
+UPDATE rendered_segments SET status = 'queued', updated_at = now() WHERE status = 'rendering'; UPDATE render_jobs SET status = 'queued', updated_at = now() WHERE status IN ('queued', 'rendering');
