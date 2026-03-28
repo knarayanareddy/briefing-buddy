@@ -542,6 +542,68 @@ export type Database = {
         }
         Relationships: []
       }
+      deep_dive_runs: {
+        Row: {
+          citations: Json
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          evidence_source_ids: string[]
+          id: string
+          output_summary: string | null
+          question: string | null
+          run_type: string
+          script_id: string | null
+          segment_id: number | null
+          started_at: string | null
+          status: string
+          tool_trace: Json
+          user_id: string
+        }
+        Insert: {
+          citations?: Json
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          evidence_source_ids?: string[]
+          id?: string
+          output_summary?: string | null
+          question?: string | null
+          run_type?: string
+          script_id?: string | null
+          segment_id?: number | null
+          started_at?: string | null
+          status?: string
+          tool_trace?: Json
+          user_id: string
+        }
+        Update: {
+          citations?: Json
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          evidence_source_ids?: string[]
+          id?: string
+          output_summary?: string | null
+          question?: string | null
+          run_type?: string
+          script_id?: string | null
+          segment_id?: number | null
+          started_at?: string | null
+          status?: string
+          tool_trace?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deep_dive_runs_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "briefing_scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reading_list: {
         Row: {
           created_at: string
@@ -753,6 +815,39 @@ export type Database = {
           title?: string | null
           url?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      tts_audio_cache: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          format: string
+          id: string
+          storage_path: string
+          text_hash: string
+          user_id: string
+          voice_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          format?: string
+          id?: string
+          storage_path: string
+          text_hash: string
+          user_id: string
+          voice_id?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          format?: string
+          id?: string
+          storage_path?: string
+          text_hash?: string
+          user_id?: string
+          voice_id?: string
         }
         Relationships: []
       }
