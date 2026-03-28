@@ -12,6 +12,7 @@ import Vault from "./pages/Vault.tsx";
 import Auth from "./pages/Auth.tsx";
 import GoogleOAuthCallback from "./pages/GoogleOAuthCallback.tsx";
 import SlackOAuthCallback from "./pages/SlackOAuthCallback.tsx";
+import GitHubOAuthCallback from "./pages/GitHubOAuthCallback.tsx";
 import ReadingList from "./pages/ReadingList.tsx";
 import History from "./pages/History.tsx";
 import Settings from "./pages/Settings.tsx";
