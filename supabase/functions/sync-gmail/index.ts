@@ -37,11 +37,11 @@ serve(async (req: Request) => {
       });
     }
 
-    const { items_synced, message } = await syncGmailForUser(supabase, { userId, runId });
+    const { items_synced } = await syncGmailForUser(supabase, { userId, runId });
 
-    await logAudit(supabase, userId, "sync_gmail", { message: "Sync attempt on stub" });
+    await logAudit(supabase, userId, "sync_gmail", { items_synced });
     
-    return new Response(JSON.stringify({ ok: true, items_synced, message }), {
+    return new Response(JSON.stringify({ ok: true, items_synced }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
