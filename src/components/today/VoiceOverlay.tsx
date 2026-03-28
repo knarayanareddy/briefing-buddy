@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Mic, MicOff, X, Send, Volume2, VolumeX, MessageSquare, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Mic, MicOff, X, Send, VolumeX, MessageSquare, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVoiceChat } from "@/hooks/useVoiceChat";
 
