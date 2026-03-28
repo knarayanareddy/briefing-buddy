@@ -11,8 +11,46 @@ export interface RenderProgress {
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 /**
+ * Use AI to generate a vivid, specific visual description prompt
+ * from the segment's dialogue text, so b-roll images match the content.
+ */
+async function generateBrollPrompt(dialogue: string, segmentLabel: string): Promise<string> {
+  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!lovableApiKey) return dialogue; // fallback to raw dialogue
+
+  try {
+    const response = await fetch(LOVABLE_AI_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${lovableApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          {
+            role: "system",
+            content: `You are a cinematographer creating visual descriptions for executive briefing video segments. Given a segment's narration and topic, output a single concise visual description (1-2 sentences) of the ideal b-roll image. Be SPECIFIC to the actual content — reference concrete objects, settings, or metaphors that match the narration. Never include text overlays. Output ONLY the visual description, nothing else.`
+          },
+          {
+            role: "user",
+            content: `Segment topic: ${segmentLabel}\nNarration: ${dialogue.slice(0, 500)}`
+          }
+        ],
+      }),
+    });
+
+    if (!response.ok) return dialogue;
+    const result = await response.json();
+    const prompt = result.choices?.[0]?.message?.content?.trim();
+    return prompt || dialogue;
+  } catch {
+    return dialogue;
+  }
+}
+
+/**
  * Generate a themed b-roll image using Lovable AI Gateway.
- * Uses the image generation model with proper modalities parameter.
  */
 async function generateBrollImage(prompt: string): Promise<string | null> {
   const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
@@ -34,7 +72,7 @@ async function generateBrollImage(prompt: string): Promise<string | null> {
         messages: [
           {
             role: "user",
-            content: `Generate a cinematic, wide-angle 16:9 b-roll image for a professional morning briefing video segment. The visual should directly illustrate: "${prompt}". Style: photorealistic, editorial lighting, shallow depth-of-field, slightly desaturated corporate color palette. Output only the image, no text overlay.`,
+            content: `Generate a cinematic, wide-angle 16:9 b-roll photograph for a professional morning briefing video. The image should vividly depict: "${prompt}". Style: photorealistic, editorial lighting, shallow depth-of-field, rich color grading. No text overlays, no UI elements.`,
           },
         ],
       }),
@@ -48,17 +86,15 @@ async function generateBrollImage(prompt: string): Promise<string | null> {
 
     const result = await response.json();
 
-    // Extract image from the response (images array format)
     const images = result.choices?.[0]?.message?.images;
     if (images && images.length > 0) {
       const imageUrl = images[0]?.image_url?.url;
       if (imageUrl) {
-        console.log(`B-roll generated successfully (${imageUrl.slice(0, 50)}...)`);
+        console.log(`B-roll generated successfully`);
         return imageUrl;
       }
     }
 
-    // Fallback: check inline_data format
     const parts = result.choices?.[0]?.message?.parts;
     if (parts) {
       for (const part of parts) {
@@ -96,6 +132,7 @@ export async function processNextSegments(
   if (jobErr || !job) throw new Error("Job not found");
   const script = job.briefing_scripts.script_json;
   const personaTitle = script.script_metadata?.persona_applied || "Professional";
+  const timelineSegments = script.timeline_segments || [];
 
   // 2. Fetch pending segments
   const { data: segments, error: segErr } = await supabase
@@ -118,15 +155,23 @@ export async function processNextSegments(
     try {
       let bRollUrl: string | null = null;
 
-      // Build a themed prompt from dialogue + any explicit b-roll prompt
-      const brollPrompt = seg.runware_b_roll_prompt || seg.dialogue;
+      // Find matching timeline segment for context
+      const timelineSeg = timelineSegments.find((ts: any) => ts.segment_id === seg.segment_id);
+      const segmentLabel = timelineSeg?.label || timelineSeg?.module_id || `Segment ${seg.segment_id}`;
+
+      // Generate a content-specific visual prompt from the dialogue
+      const visualPrompt = seg.dialogue
+        ? await generateBrollPrompt(seg.dialogue, segmentLabel)
+        : segmentLabel;
+
+      console.log(`Segment ${seg.segment_id} (${segmentLabel}) visual prompt: ${visualPrompt.slice(0, 100)}`);
 
       // Try Runware first if configured
-      if (config.ENABLE_RUNWARE && config.RUNWARE_API_KEY && brollPrompt) {
+      if (config.ENABLE_RUNWARE && config.RUNWARE_API_KEY && visualPrompt) {
         try {
           const { runwareProvider } = await import("./providers/runware.ts");
           const res = await runwareProvider.generateImage({
-            prompt: brollPrompt,
+            prompt: visualPrompt,
             aspectRatio: "16:9",
           });
           bRollUrl = res.url;
@@ -136,8 +181,8 @@ export async function processNextSegments(
       }
 
       // Lovable AI b-roll generation (themed to content)
-      if (!bRollUrl && brollPrompt) {
-        bRollUrl = await generateBrollImage(brollPrompt);
+      if (!bRollUrl && visualPrompt) {
+        bRollUrl = await generateBrollImage(visualPrompt);
       }
 
       // Final fallback: themed placeholder based on segment content
