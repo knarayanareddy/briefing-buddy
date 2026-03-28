@@ -14,6 +14,7 @@ import {
   disconnectConnector, 
   startGoogleOAuth,
   startSlackOAuth,
+  startGitHubOAuth,
   testRssSync,
   testGitHubSync,
   testSlackSync
