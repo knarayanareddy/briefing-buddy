@@ -395,6 +395,35 @@ export default function Today() {
         </div>
       )}
 
+      {/* Voice Interaction Mic Button */}
+      {(appState === "playing" || appState === "paused") && (
+        <button
+          onClick={() => {
+            if (appState === "playing") setAppState("paused");
+            setIsVoiceOpen(true);
+          }}
+          className="fixed bottom-24 right-8 z-40 w-14 h-14 rounded-full bg-[#5789FF]/20 border border-[#5789FF]/30 flex items-center justify-center hover:bg-[#5789FF]/40 hover:scale-110 transition-all shadow-[0_0_30px_rgba(87,137,255,0.2)]"
+          title="Ask about this briefing"
+        >
+          <svg className="w-6 h-6 text-[#5789FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
+        </button>
+      )}
+
+      <VoiceOverlay
+        isOpen={isVoiceOpen}
+        onClose={() => setIsVoiceOpen(false)}
+        scriptId={scriptId}
+        currentSegmentId={currentSegment?.segment_id ?? null}
+        currentDialogue={currentSegment?.dialogue || ""}
+        contextSegments={segments.slice(
+          Math.max(0, currentIdx - 1),
+          Math.min(segments.length, currentIdx + 2)
+        ).map(s => ({ segment_id: s.segment_id, dialogue: s.dialogue }))}
+        onCommand={handleVoiceCommand}
+      />
+
       <ShareDialog
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
