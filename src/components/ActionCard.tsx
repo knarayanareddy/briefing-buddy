@@ -132,15 +132,23 @@ export function ActionCard({ card, dialogue, segmentIndex, totalSegments, script
 
   const resultUrl = actionRecord?.provider_result?.issue_url
     || actionRecord?.provider_result?.html_link
-    || actionRecord?.provider_result?.draft_id
+    || (actionRecord?.provider_result?.draft_id
       ? `https://mail.google.com/mail/u/0/#drafts`
-      : null;
+      : null);
+
+  if (!isActive) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-6 text-center">
+        <p className="text-muted-foreground text-sm">No action for this segment</p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-border bg-card p-5 space-y-4">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-          {iconMap[card.action_type || card.card_type || ""] || <ExternalLink className="w-5 h-5" />}
+          {iconMap[card!.action_type || card!.card_type || ""] || <ExternalLink className="w-5 h-5" />}
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-card-foreground text-sm truncate">{card.title}</h3>
