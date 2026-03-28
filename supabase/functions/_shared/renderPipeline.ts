@@ -155,15 +155,23 @@ export async function processNextSegments(
     try {
       let bRollUrl: string | null = null;
 
-      // Build a themed prompt from dialogue + any explicit b-roll prompt
-      const brollPrompt = seg.runware_b_roll_prompt || seg.dialogue;
+      // Find matching timeline segment for context
+      const timelineSeg = timelineSegments.find((ts: any) => ts.segment_id === seg.segment_id);
+      const segmentLabel = timelineSeg?.label || timelineSeg?.module_id || `Segment ${seg.segment_id}`;
+
+      // Generate a content-specific visual prompt from the dialogue
+      const visualPrompt = seg.dialogue
+        ? await generateBrollPrompt(seg.dialogue, segmentLabel)
+        : segmentLabel;
+
+      console.log(`Segment ${seg.segment_id} (${segmentLabel}) visual prompt: ${visualPrompt.slice(0, 100)}`);
 
       // Try Runware first if configured
-      if (config.ENABLE_RUNWARE && config.RUNWARE_API_KEY && brollPrompt) {
+      if (config.ENABLE_RUNWARE && config.RUNWARE_API_KEY && visualPrompt) {
         try {
           const { runwareProvider } = await import("./providers/runware.ts");
           const res = await runwareProvider.generateImage({
-            prompt: brollPrompt,
+            prompt: visualPrompt,
             aspectRatio: "16:9",
           });
           bRollUrl = res.url;
@@ -173,8 +181,8 @@ export async function processNextSegments(
       }
 
       // Lovable AI b-roll generation (themed to content)
-      if (!bRollUrl && brollPrompt) {
-        bRollUrl = await generateBrollImage(brollPrompt);
+      if (!bRollUrl && visualPrompt) {
+        bRollUrl = await generateBrollImage(visualPrompt);
       }
 
       // Final fallback: themed placeholder based on segment content
