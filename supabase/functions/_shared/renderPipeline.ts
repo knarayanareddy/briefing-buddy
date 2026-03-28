@@ -8,25 +8,26 @@ export interface RenderProgress {
   isDone: boolean;
 }
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_IMAGES_URL = "https://api.openai.com/v1/images/generations";
 
 /**
- * Use AI to generate a vivid, specific visual description prompt
+ * Use OpenAI to generate a vivid, specific visual description prompt
  * from the segment's dialogue text, so b-roll images match the content.
  */
 async function generateBrollPrompt(dialogue: string, segmentLabel: string): Promise<string> {
-  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!lovableApiKey) return dialogue; // fallback to raw dialogue
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) return dialogue; // fallback to raw dialogue
 
   try {
-    const response = await fetch(LOVABLE_AI_URL, {
+    const response = await fetch(OPENAI_URL, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
+        "Authorization": `Bearer ${openaiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -50,61 +51,45 @@ async function generateBrollPrompt(dialogue: string, segmentLabel: string): Prom
 }
 
 /**
- * Generate a themed b-roll image using Lovable AI Gateway.
+ * Generate a themed b-roll image using OpenAI DALL-E 3.
  */
 async function generateBrollImage(prompt: string): Promise<string | null> {
-  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!lovableApiKey) {
-    console.warn("LOVABLE_API_KEY not set, skipping b-roll generation");
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) {
+    console.warn("OPENAI_API_KEY not set, skipping b-roll generation");
     return null;
   }
 
   try {
-    const response = await fetch(LOVABLE_AI_URL, {
+    const response = await fetch(OPENAI_IMAGES_URL, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
+        "Authorization": `Bearer ${openaiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.1-flash-image-preview",
-        modalities: ["image", "text"],
-        messages: [
-          {
-            role: "user",
-            content: `Generate a cinematic, wide-angle 16:9 b-roll photograph for a professional morning briefing video. The image should vividly depict: "${prompt}". Style: photorealistic, editorial lighting, shallow depth-of-field, rich color grading. No text overlays, no UI elements.`,
-          },
-        ],
+        model: "dall-e-3",
+        prompt: `Cinematic, wide-angle 16:9 b-roll photograph for a professional morning briefing video. The image should vividly depict: "${prompt}". Style: photorealistic, editorial lighting, shallow depth-of-field, rich color grading. No text overlays, no UI elements.`,
+        n: 1,
+        size: "1792x1024",
+        quality: "standard",
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.warn(`B-roll generation failed (${response.status}): ${errText.slice(0, 300)}`);
+      console.warn(`DALL-E b-roll generation failed (${response.status}): ${errText.slice(0, 300)}`);
       return null;
     }
 
     const result = await response.json();
-
-    const images = result.choices?.[0]?.message?.images;
-    if (images && images.length > 0) {
-      const imageUrl = images[0]?.image_url?.url;
-      if (imageUrl) {
-        console.log(`B-roll generated successfully`);
-        return imageUrl;
-      }
+    const imageUrl = result.data?.[0]?.url;
+    if (imageUrl) {
+      console.log(`B-roll generated successfully via DALL-E`);
+      return imageUrl;
     }
 
-    const parts = result.choices?.[0]?.message?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inline_data?.data) {
-          return `data:${part.inline_data.mime_type};base64,${part.inline_data.data}`;
-        }
-      }
-    }
-
-    console.warn("B-roll generation returned no image data");
+    console.warn("DALL-E returned no image data");
     return null;
   } catch (e: any) {
     console.warn(`B-roll generation error: ${e.message}`);
@@ -180,14 +165,13 @@ export async function processNextSegments(
         }
       }
 
-      // Lovable AI b-roll generation (themed to content)
+      // OpenAI DALL-E b-roll generation (themed to content)
       if (!bRollUrl && visualPrompt) {
         bRollUrl = await generateBrollImage(visualPrompt);
       }
 
       // Final fallback: themed placeholder based on segment content
       if (!bRollUrl) {
-        // Use a deterministic seed from the resolved visual prompt for consistency
         const seedSource = (visualPrompt || seg.dialogue || segmentLabel || "briefing").slice(0, 30);
         const seed = encodeURIComponent(seedSource);
         bRollUrl = `https://picsum.photos/seed/${seed}/1280/720`;

@@ -1,10 +1,22 @@
 /**
  * orqClient — Routing wrapper for LLM calls.
- * Uses Lovable AI gateway with fallback, adding metadata for observability.
- * In production, this would route through orq.ai for guardrails + masking.
+ * Uses OpenAI API directly with OPENAI_API_KEY.
+ * Adds PII masking for observability/safety.
  */
 
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+
+// Map Gemini model names to OpenAI equivalents
+function mapModel(model: string): string {
+  const map: Record<string, string> = {
+    "google/gemini-3-flash-preview": "gpt-4o-mini",
+    "google/gemini-2.5-flash": "gpt-4o-mini",
+    "google/gemini-2.5-flash-lite": "gpt-4o-mini",
+    "google/gemini-2.5-pro": "gpt-4o",
+    "google/gemini-3.1-pro-preview": "gpt-4o",
+  };
+  return map[model] || model;
+}
 
 interface OrqOptions {
   task_type: string;
@@ -21,18 +33,18 @@ interface OrqOptions {
 interface OrqResult {
   choices: any[];
   usage?: any;
-  routed_via: "lovable_ai" | "fallback";
+  routed_via: "openai" | "fallback";
   task_type: string;
 }
 
 /**
- * Route an LLM call through the orq-compatible wrapper.
+ * Route an LLM call through OpenAI API.
  * Adds masking of PII patterns before sending.
  */
 export async function orqCall(options: OrqOptions): Promise<OrqResult> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    throw new Error("LOVABLE_API_KEY not configured");
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY not configured");
   }
 
   // Mask PII patterns in messages
@@ -41,8 +53,10 @@ export async function orqCall(options: OrqOptions): Promise<OrqResult> {
     content: maskPII(m.content),
   }));
 
+  const resolvedModel = mapModel(options.model || "google/gemini-3-flash-preview");
+
   const body: any = {
-    model: options.model || "google/gemini-3-flash-preview",
+    model: resolvedModel,
     messages: maskedMessages,
     stream: options.stream || false,
   };
@@ -52,12 +66,11 @@ export async function orqCall(options: OrqOptions): Promise<OrqResult> {
   if (options.tool_choice) body.tool_choice = options.tool_choice;
 
   try {
-    const response = await fetch(GATEWAY_URL, {
+    const response = await fetch(OPENAI_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
-        "X-Task-Type": options.task_type,
       },
       body: JSON.stringify(body),
     });
@@ -69,13 +82,14 @@ export async function orqCall(options: OrqOptions): Promise<OrqResult> {
       if (response.status === 402) {
         throw new Error("Credits exhausted");
       }
-      throw new Error(`AI gateway error: ${response.status}`);
+      const errText = await response.text();
+      throw new Error(`OpenAI API error (${response.status}): ${errText.slice(0, 200)}`);
     }
 
     const result = await response.json();
     return {
       ...result,
-      routed_via: "lovable_ai",
+      routed_via: "openai",
       task_type: options.task_type,
     };
   } catch (err) {
