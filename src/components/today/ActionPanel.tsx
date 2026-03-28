@@ -1,10 +1,12 @@
 import { ActionCard } from "@/components/ActionCard";
-import { Copy, ExternalLink, Info, Activity, Shield, Zap, Database } from "lucide-react";
+import { Copy, ExternalLink, Info, Activity, Shield, Zap, Database, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Bookmark, Check } from "lucide-react";
+import { addToReadingList } from "@/lib/api";
+import DeepDivePanel from "@/components/today/DeepDivePanel";
 import { addToReadingList } from "@/lib/api";
 
 interface ActionPanelProps {
