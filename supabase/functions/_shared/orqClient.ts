@@ -65,37 +65,58 @@ export async function orqCall(options: OrqOptions): Promise<OrqResult> {
   if (options.tools) body.tools = options.tools;
   if (options.tool_choice) body.tool_choice = options.tool_choice;
 
-  try {
-    const response = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+  const MAX_RETRIES = 3;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(OPENAI_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
 
-    if (!response.ok) {
       if (response.status === 429) {
+        const retryAfter = parseInt(response.headers.get("retry-after") || "0") || (2 ** attempt * 2);
+        console.warn(`orqClient [${options.task_type}] rate limited, retry ${attempt + 1}/${MAX_RETRIES} in ${retryAfter}s`);
+        if (attempt < MAX_RETRIES - 1) {
+          await new Promise(r => setTimeout(r, retryAfter * 1000));
+          continue;
+        }
         throw new Error("Rate limited");
       }
-      if (response.status === 402) {
-        throw new Error("Credits exhausted");
-      }
-      const errText = await response.text();
-      throw new Error(`OpenAI API error (${response.status}): ${errText.slice(0, 200)}`);
-    }
 
-    const result = await response.json();
-    return {
-      ...result,
-      routed_via: "openai",
-      task_type: options.task_type,
-    };
-  } catch (err) {
-    console.error(`orqClient [${options.task_type}] error:`, (err as Error).message);
-    throw err;
+      if (!response.ok) {
+        if (response.status === 402) {
+          throw new Error("Credits exhausted");
+        }
+        const errText = await response.text();
+        throw new Error(`OpenAI API error (${response.status}): ${errText.slice(0, 200)}`);
+      }
+
+      const result = await response.json();
+      return {
+        ...result,
+        routed_via: "openai",
+        task_type: options.task_type,
+      };
+    } catch (err) {
+      const msg = (err as Error).message;
+      if (msg === "Credits exhausted" || (msg === "Rate limited" && attempt === MAX_RETRIES - 1)) {
+        console.error(`orqClient [${options.task_type}] error:`, msg);
+        throw err;
+      }
+      if (attempt < MAX_RETRIES - 1 && !msg.startsWith("OpenAI API error")) {
+        console.warn(`orqClient [${options.task_type}] attempt ${attempt + 1} failed: ${msg.slice(0, 100)}, retrying...`);
+        await new Promise(r => setTimeout(r, 2 ** attempt * 1000));
+        continue;
+      }
+      console.error(`orqClient [${options.task_type}] error:`, msg);
+      throw err;
+    }
   }
+  throw new Error("Max retries exceeded");
 }
 
 /**
