@@ -100,12 +100,13 @@ serve(async (req: Request) => {
           },
           body: JSON.stringify({
             text: trimmedText,
-            model_id: "eleven_turbo_v2_5",
+            model_id: "eleven_multilingual_v2",
             voice_settings: {
-              stability: 0.6,
-              similarity_boost: 0.8,
-              style: 0.3,
+              stability: 0.4,
+              similarity_boost: 0.75,
+              style: 0.45,
               use_speaker_boost: true,
+              speed: 1.0,
             },
           }),
           signal: controller.signal,
