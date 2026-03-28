@@ -186,8 +186,17 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
       case "github":
         return (
           <div className="space-y-6">
+            <div className="p-4 bg-[#5789FF]/5 border border-[#5789FF]/20 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-white">GitHub Account Access</p>
+                <p className="text-[10px] text-white/50">Connect via OAuth for secure repo access</p>
+              </div>
+              <Button onClick={handleGitHubConnect} variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider text-[#5789FF] border-[#5789FF]/30 hover:bg-[#5789FF]/10">
+                Connect GitHub
+              </Button>
+            </div>
             <div className="space-y-3">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Personal Access Token</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Or: Paste Personal Access Token</Label>
               <Input 
                 type="password"
                 placeholder="ghp_****************"
@@ -195,7 +204,7 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
                 onChange={(e) => setSecret(e.target.value)}
                 className="sa-input-premium font-mono"
               />
-              <p className="text-[9px] text-white/30 uppercase tracking-widest">Leave blank to keep existing token. Requires repo scopes.</p>
+              <p className="text-[9px] text-white/30 uppercase tracking-widest">Leave blank if using OAuth above.</p>
             </div>
             <div className="space-y-3">
               <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Target Repositories</Label>
