@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Mail, Cloud, Calendar, Code, Link as LinkIcon, Bookmark, Check, Play, X, Loader2, AlertTriangle, CheckCircle2, Github } from "lucide-react";
+import { ExternalLink, Mail, Cloud, Calendar, Code, Link as LinkIcon, Bookmark, Check, Play, X, Loader2, AlertTriangle, CheckCircle2, Github, MessageSquare, TrendingUp } from "lucide-react";
 import { useState, useCallback } from "react";
 import { addToReadingList, createAction, approveAction, executeAction, type ActionRecord } from "@/lib/api";
 import { toast } from "sonner";
