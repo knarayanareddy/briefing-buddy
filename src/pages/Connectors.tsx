@@ -237,12 +237,27 @@ export default function Connectors() {
           />
           <ConnectorCard 
             icon={BookOpen}
-            iconBg="bg-gray-500/10 text-gray-500"
+            iconBg="bg-gray-500/20 text-gray-400"
             title="Notion Knowledge Base"
             description="Vector indexing of technical documentation and internal wikis."
-            status="disabled"
-            statusLabel="Coming Soon"
-            stats={[{label: 'Release', value: 'Q4'}, {label: 'Status', value: 'Alpha'}]}
+            status={getStatusForProvider('notion').status === 'error' ? 'error' : (getStatusForProvider('notion').connected ? 'healthy' : 'warning')}
+            statusLabel={getStatusForProvider('notion').status === 'error' ? 'Error' : (getStatusForProvider('notion').connected ? 'Healthy' : 'Needs Config')}
+            stats={[{label: 'Last Sync', value: formatRelativeTime(getStatusForProvider('notion').last_run?.started_at)}, {label: 'Items', value: (getStatusForProvider('notion').last_run?.items_upserted || 0).toString()}]}
+            onConfigure={() => handleConfigure("Notion Knowledge Base", "notion")}
+            onTest={() => handleTestAction("notion")}
+            onSync={() => handleSyncAction("notion")}
+          />
+          <ConnectorCard 
+            icon={TrendingUp}
+            iconBg="bg-emerald-500/20 text-emerald-400"
+            title="Stock Market"
+            description="Real-time stock quotes and market snapshots for configured tickers."
+            status={getStatusForProvider('stocks').status === 'error' ? 'error' : (getStatusForProvider('stocks').connected ? 'healthy' : 'warning')}
+            statusLabel={getStatusForProvider('stocks').status === 'error' ? 'Error' : (getStatusForProvider('stocks').connected ? 'Healthy' : 'Needs Config')}
+            stats={[{label: 'Last Sync', value: formatRelativeTime(getStatusForProvider('stocks').last_run?.started_at)}, {label: 'Items', value: (getStatusForProvider('stocks').last_run?.items_upserted || 0).toString()}]}
+            onConfigure={() => handleConfigure("Stock Market", "stocks")}
+            onTest={() => handleTestAction("stocks")}
+            onSync={() => handleSyncAction("stocks")}
           />
           
           {/* Integrate New Service Card */}
