@@ -389,6 +389,11 @@ export default function Today() {
         scriptId={scriptId}
         jobId={jobId}
       />
+
+      <EvidenceDrawer
+        sourceId={evidenceSourceId}
+        onClose={() => setEvidenceSourceId(null)}
+      />
     </div>
   );
 }
