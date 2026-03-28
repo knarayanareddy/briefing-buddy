@@ -13,6 +13,7 @@ import {
   triggerSync, 
   disconnectConnector, 
   startGoogleOAuth,
+  startSlackOAuth,
   testRssSync,
   testGitHubSync,
   testSlackSync
