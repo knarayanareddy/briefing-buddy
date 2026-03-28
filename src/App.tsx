@@ -11,6 +11,7 @@ import IntegrationLab from "./pages/IntegrationLab.tsx";
 import Vault from "./pages/Vault.tsx";
 import Auth from "./pages/Auth.tsx";
 import GoogleOAuthCallback from "./pages/GoogleOAuthCallback.tsx";
+import SlackOAuthCallback from "./pages/SlackOAuthCallback.tsx";
 import ReadingList from "./pages/ReadingList.tsx";
 import History from "./pages/History.tsx";
 import Settings from "./pages/Settings.tsx";
@@ -58,6 +59,7 @@ const App = () => (
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/oauth/google/callback" element={<GoogleOAuthCallback />} />
+          <Route path="/oauth/slack/callback" element={<SlackOAuthCallback />} />
           <Route path="/share/:token" element={<SharedBrief />} />
           <Route path="/" element={<Index />} />
           <Route element={<RequireAuth><AppShell /></RequireAuth>}>

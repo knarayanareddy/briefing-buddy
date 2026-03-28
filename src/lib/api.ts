@@ -306,6 +306,12 @@ export async function completeGoogleOAuth(code: string, state: string) {
   });
 }
 
+export async function startSlackOAuth(redirect_url: string) {
+  return callEdgeFunction<{url: string}>("slack-oauth-start", {
+    body: { redirect_url }
+  });
+}
+
 // --- History & Retrieval ---
 
 export async function listHistory(limit = 50, offset = 0, includeArchived = false) {

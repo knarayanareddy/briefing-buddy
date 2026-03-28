@@ -13,6 +13,7 @@ import {
   triggerSync, 
   disconnectConnector, 
   startGoogleOAuth,
+  startSlackOAuth,
   testRssSync,
   testGitHubSync,
   testSlackSync
@@ -152,6 +153,15 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
     }
   };
 
+  const handleSlackConnect = async () => {
+    try {
+      const res = await startSlackOAuth(window.location.origin + "/oauth/slack/callback");
+      if (res.url) window.location.href = res.url;
+    } catch (err: any) {
+      toast.error("Failed to start Slack OAuth: " + err.message);
+    }
+  };
+
   const renderFields = () => {
     if (isLoading) {
       return (
@@ -245,8 +255,17 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
       case "slack":
         return (
           <div className="space-y-6">
+            <div className="p-4 bg-[#5789FF]/5 border border-[#5789FF]/20 rounded-xl flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-white">Slack Workspace Access</p>
+                <p className="text-[10px] text-white/50">Connect via OAuth for secure channel access</p>
+              </div>
+              <Button onClick={handleSlackConnect} variant="outline" className="h-8 text-[10px] font-bold uppercase tracking-wider text-[#5789FF] border-[#5789FF]/30 hover:bg-[#5789FF]/10">
+                Connect Slack
+              </Button>
+            </div>
             <div className="space-y-3">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Slack Bot Token</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Or: Paste Bot Token Manually</Label>
               <Input 
                 type="password"
                 placeholder="xoxb-****************"
@@ -254,7 +273,7 @@ export default function ConfigModal({ isOpen, onClose, title, provider }: any) {
                 onChange={(e) => setSecret(e.target.value)}
                 className="sa-input-premium font-mono"
               />
-              <p className="text-[9px] text-white/30 uppercase tracking-widest">Leave blank to keep existing token.</p>
+              <p className="text-[9px] text-white/30 uppercase tracking-widest">Leave blank if using OAuth above.</p>
             </div>
             <div className="space-y-3">
               <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Monitored Channels</Label>
