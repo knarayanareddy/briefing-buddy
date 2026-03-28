@@ -14,7 +14,7 @@ const corsHeaders = {
 };
 
 const TTS_TIMEOUT_MS = 15_000;
-const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // George
+const DEFAULT_VOICE_ID = "iP95p4xoKVk53GoZ742B"; // Chris – warm, conversational male
 
 async function hashText(text: string): Promise<string> {
   const data = new TextEncoder().encode(text);
