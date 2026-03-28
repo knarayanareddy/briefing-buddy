@@ -187,8 +187,9 @@ export async function processNextSegments(
 
       // Final fallback: themed placeholder based on segment content
       if (!bRollUrl) {
-        // Use a deterministic seed from the dialogue for consistency
-        const seed = encodeURIComponent((brollPrompt || "briefing").slice(0, 30));
+        // Use a deterministic seed from the resolved visual prompt for consistency
+        const seedSource = (visualPrompt || seg.dialogue || segmentLabel || "briefing").slice(0, 30);
+        const seed = encodeURIComponent(seedSource);
         bRollUrl = `https://picsum.photos/seed/${seed}/1280/720`;
       }
 
