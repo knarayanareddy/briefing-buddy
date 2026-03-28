@@ -1,0 +1,1 @@
+UPDATE briefing_usage_limits SET generate_count = 0, render_count = 0 WHERE user_id = '00000000-0000-0000-0000-000000000000' AND day = CURRENT_DATE;
