@@ -23,6 +23,7 @@ import ActionPanel from "@/components/today/ActionPanel";
 import BriefControls from "@/components/today/BriefControls";
 import BriefEmptyState from "@/components/today/BriefEmptyState";
 import ShareDialog from "@/components/share/ShareDialog";
+import EvidenceDrawer from "@/components/today/EvidenceDrawer";
 
 type AppState = "idle" | "generating" | "script_ready" | "rendering" | "ready" | "playing" | "paused";
 
@@ -48,6 +49,7 @@ export default function Today() {
   const [hasSession, setHasSession] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [evidenceSourceId, setEvidenceSourceId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const rawProfileId = localStorage.getItem("selectedProfileId");
@@ -336,6 +338,8 @@ export default function Today() {
           <ActionPanel 
             card={currentSegment?.ui_action_card} 
             dialogue={currentSegment?.dialogue || ""} 
+            scriptId={scriptId}
+            onEvidenceClick={(sourceId) => setEvidenceSourceId(sourceId)}
           />
         </div>
       </div>
@@ -384,6 +388,11 @@ export default function Today() {
         onClose={() => setIsShareOpen(false)}
         scriptId={scriptId}
         jobId={jobId}
+      />
+
+      <EvidenceDrawer
+        sourceId={evidenceSourceId}
+        onClose={() => setEvidenceSourceId(null)}
       />
     </div>
   );
