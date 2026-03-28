@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 // George – authoritative male voice, great for briefings
-const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
+const DEFAULT_VOICE_ID = "iP95p4xoKVk53GoZ742B"; // Chris – warm, conversational male
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS")
