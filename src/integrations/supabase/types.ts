@@ -14,6 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      actions: {
+        Row: {
+          action_type: string
+          briefing_script_id: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          evidence_source_ids: string[]
+          id: string
+          idempotency_key: string
+          payload: Json
+          provider: string
+          provider_result: Json | null
+          segment_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          briefing_script_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          evidence_source_ids?: string[]
+          id?: string
+          idempotency_key: string
+          payload?: Json
+          provider: string
+          provider_result?: Json | null
+          segment_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          briefing_script_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          evidence_source_ids?: string[]
+          id?: string
+          idempotency_key?: string
+          payload?: Json
+          provider?: string
+          provider_result?: Json | null
+          segment_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actions_briefing_script_id_fkey"
+            columns: ["briefing_script_id"]
+            isOneToOne: false
+            referencedRelation: "briefing_scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           created_at: string
