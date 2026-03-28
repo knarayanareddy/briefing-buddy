@@ -312,6 +312,12 @@ export async function startSlackOAuth(redirect_url: string) {
   });
 }
 
+export async function startGitHubOAuth(redirect_url: string) {
+  return callEdgeFunction<{url: string}>("github-oauth-start", {
+    body: { redirect_url }
+  });
+}
+
 // --- History & Retrieval ---
 
 export async function listHistory(limit = 50, offset = 0, includeArchived = false) {
