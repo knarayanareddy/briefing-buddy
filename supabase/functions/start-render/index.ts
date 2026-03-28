@@ -118,31 +118,21 @@ serve(async (req) => {
 
     if (insErr) throw insErr;
 
-    // 4. Background Rendering Loop
-    const runBackgroundRender = async () => {
-      console.log(`Phase 2: Starting background render for job ${job.id}`);
+    // 4. Process first segment immediately (remaining segments will be
+    //    driven by client-side polling via job-status endpoint)
+    const renderFirstSegment = async () => {
       try {
-        let isDone = false;
-        while (!isDone) {
-          const progress = await processNextSegments(supabase, job.id, config, 1);
-          isDone = progress.isDone;
-          if (isDone) break;
-          // small pause between segments to be nice to providers
-          await new Promise(r => setTimeout(r, 500));
-        }
-        console.log(`Phase 2: Background render complete for job ${job.id}`);
+        await processNextSegments(supabase, job.id, config, 1);
+        console.log(`First segment processed for job ${job.id}`);
       } catch (err: any) {
-        console.error(`Phase 2: Background render failed for job ${job.id}:`, err.message);
+        console.warn(`First segment render failed: ${err.message}`);
       }
     };
 
-    // Kick off background work
-    // Deno/Supabase Edge Functions support waitUntil
     if ((globalThis as any).EdgeRuntime?.waitUntil) {
-      (globalThis as any).EdgeRuntime.waitUntil(runBackgroundRender());
+      (globalThis as any).EdgeRuntime.waitUntil(renderFirstSegment());
     } else {
-      // Best effort if not on EdgeRuntime
-      runBackgroundRender();
+      renderFirstSegment();
     }
 
     // 4b. Audit Logging
