@@ -40,12 +40,23 @@ serve(async (req: Request) => {
 
     const type = run_type === "verify" ? "verify" : "deep_dive";
 
+    // Validate script_id exists before inserting (FK constraint)
+    let validScriptId: string | null = null;
+    if (script_id) {
+      const { data: scriptRow } = await supabase
+        .from("briefing_scripts")
+        .select("id")
+        .eq("id", script_id)
+        .maybeSingle();
+      if (scriptRow) validScriptId = scriptRow.id;
+    }
+
     // Insert the run record immediately (async pattern — return run_id fast)
     const { data: run, error: insertErr } = await supabase
       .from("deep_dive_runs")
       .insert({
         user_id: userId,
-        script_id: script_id || null,
+        script_id: validScriptId,
         segment_id: segment_id || null,
         evidence_source_ids,
         run_type: type,
