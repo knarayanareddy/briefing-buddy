@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { config, validateConfig } from "../_shared/config.ts";
 import { authorizeRequest } from "../_shared/auth.ts";
-import { cryptoRandom } from "../_shared/crypto.ts"; // Assuming cryptoRandom exists or use Web Crypto
+// import { cryptoRandom } from "../_shared/crypto.ts"; // Removed unused import causing test harness mismatch
 
 validateConfig();
 

@@ -1,4 +1,4 @@
-import { z } from "https://esm.sh/zod@3.22.4";
+import { z } from "https://esm.sh/zod@4.6.7";
 
 export const ActionCardSchema = z.object({
   is_active: z.boolean(),
