@@ -50,13 +50,9 @@ jobs:
           --rules-exclude=no-explicit-any,no-import-prefix,no-unused-vars,require-await
           supabase/functions tests
 
-      # Unit tests only: they need no secrets and no network beyond deno/esm
-      # module fetches. Integration tests (tests/milestone_*) require
-      # SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY and run separately.
+      # Unit tests only: import-mapped to local/npm specifiers (tests/import_map.json)
+      # so no deno.land/esm.sh access is needed. Integration tests
+      # (tests/milestone_*) require SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+      # and run separately.
       - name: Edge function unit tests (Deno)
-        run: >-
-          deno test --allow-env --allow-net --allow-read
-          supabase/functions/_shared/planner_test.ts
-          supabase/functions/generate-script/generate-script_test.ts
-          supabase/functions/assemble-user-data/assemble-user-data_test.ts
-          tests/health_test.ts
+        run: npm run test:deno

@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:deno": "deno test --allow-env --allow-net --allow-read supabase/functions/_shared/planner_test.ts supabase/functions/generate-script/generate-script_test.ts supabase/functions/assemble-user-data/assemble-user-data_test.ts tests/health_test.ts"
+    "test:deno": "deno test --no-lock --node-modules-dir=none --import-map=tests/import_map.json --allow-env --allow-net --allow-read supabase/functions/_shared/planner_test.ts supabase/functions/generate-script/generate-script_test.ts supabase/functions/assemble-user-data/assemble-user-data_test.ts tests/health_test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
