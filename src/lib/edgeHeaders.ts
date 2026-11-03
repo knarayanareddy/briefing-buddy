@@ -24,9 +24,13 @@ export async function buildEdgeHeaders(
   if (session) {
     headers["Authorization"] = `Bearer ${session.access_token}`;
   } else {
+    // SECURITY FIX: Production guard added. Demo mode only works in explicit development/preview modes.
+    const isProd = import.meta.env.PROD || import.meta.env.NODE_ENV === "production";
     const demoAuthMode = import.meta.env.VITE_DEMO_AUTH_MODE || "internal_key";
     const demoKey = import.meta.env.VITE_DEMO_INTERNAL_KEY;
-    if (demoAuthMode === "internal_key" && demoKey) {
+    
+    // Only allow internal key injection if NOT in production AND explicitly configured
+    if (!isProd && demoAuthMode === "internal_key" && demoKey) {
       headers["x-internal-api-key"] = demoKey;
       headers["x-preview-user-id"] =
         import.meta.env.VITE_DEMO_USER_ID || "00000000-0000-0000-0000-000000000000";
