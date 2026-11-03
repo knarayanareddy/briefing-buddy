@@ -76,7 +76,7 @@ ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
     // SECURITY FIX: Sanitize color/theme inputs to prevent CSS injection (strip quotes/brackets/url/expression)
-    const safeColor = color ? String(color).replace(/['"\(\)\{\};]/g, "") : "";
+    const safeColor = color ? String(color).replace(/['"(){};]/g, "") : "";
     return safeColor ? `  --color-${key}: ${safeColor};` : null;
   })
   .join("\n")}
