@@ -426,7 +426,7 @@ export default function IntegrationLab() {
             <div className="flex flex-col gap-1">
                <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Active Node</span>
                <div className="flex items-center gap-3">
-                  <Badge className="sa-button-primary border-none shadow-lg px-4 font-bold uppercase tracking-widest">v{process.env.NODE_ENV === 'production' ? '1.0.4' : 'PRE-FLY'}</Badge>
+                  <Badge className="sa-button-primary border-none shadow-lg px-4 font-bold uppercase tracking-widest">v{typeof window !== "undefined" && (window as any).process && (window as any).process.env && (window as any).process.env.NODE_ENV === 'production' ? '1.0.4' : 'PRE-FLY'}</Badge>
                   <span className="text-[10px] font-mono text-white/40">US-EAST-1</span>
                </div>
             </div>

@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
+import type { CSSProperties } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -100,26 +101,15 @@ const ChartTooltipContent = React.forwardRef<
       indicator?: "line" | "dot" | "dashed";
       nameKey?: string;
       labelKey?: string;
+      label?: React.ReactNode;
+      labelFormatter?: (value: any, payload: any) => React.ReactNode;
+      labelClassName?: string;
+      active?: boolean;
+      formatter?: (value: any, name: string, item: any, index: number, payload: any) => React.ReactNode;
+      color?: string;
     }
 >(
-  (
-    {
-      active,
-      payload,
-      className,
-      indicator = "dot",
-      hideLabel = false,
-      hideIndicator = false,
-      label,
-      labelFormatter,
-      labelClassName,
-      formatter,
-      color,
-      nameKey,
-      labelKey,
-    },
-    ref,
-  ) => {
+  ({ className, hideLabel = false, payload, verticalAlign = "bottom", nameKey, label, labelFormatter, labelClassName, active, formatter, color, indicator = "line", hideIndicator = false }, ref) => {
     const { config } = useChart();
 
     const tooltipLabel = React.useMemo(() => {
@@ -190,12 +180,10 @@ const ChartTooltipContent = React.forwardRef<
                             "w-0 border-[1.5px] border-dashed bg-transparent": indicator === "dashed",
                             "my-0.5": nestLabel && indicator === "dashed",
                           })}
-                          style={
-                            {
-                              "--color-bg": indicatorColor,
-                              "--color-border": indicatorColor,
-                            } as React.CSSProperties
-                          }
+                          style={{
+                            "--color-bg": indicatorColor,
+                            "--color-border": indicatorColor,
+                          } as React.CSSProperties}
                         />
                       )
                     )}
@@ -232,11 +220,17 @@ const ChartLegend = RechartsPrimitive.Legend;
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> &
-    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+    Pick<RechartsPrimitive.Props<any, any>, "payload" | "verticalAlign"> & {
       hideIcon?: boolean;
       nameKey?: string;
+      label?: React.ReactNode;
+      labelFormatter?: (value: any, payload: any) => React.ReactNode;
+      labelClassName?: string;
+      active?: boolean;
+      formatter?: (value: any, name: string, item: any, index: number, payload: any) => React.ReactNode;
+      color?: string;
     }
->(({ className, hideIcon = false, payload, verticalAlign = "bottom", nameKey }, ref) => {
+>(({ className, hideIcon = false, payload, verticalAlign = "bottom", nameKey, label, labelFormatter, labelClassName, active, formatter, color, indicator = "line", hideIndicator = false }, ref) => {
   const { config } = useChart();
 
   if (!payload?.length) {
