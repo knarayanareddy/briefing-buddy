@@ -154,9 +154,14 @@ const GeneralTab = ({ settings, setSettings, isDirty, onSave, onDiscard, userEma
 const SecurityTab = () => {
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [auditLog, setAuditLog] = useState<AuditEvent[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // touchSession() identifies sessions by the first 36 chars of the access token
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setCurrentSessionId(session.access_token.substring(0, 36));
+    });
     Promise.all([listSessions(), listAuditEvents()])
       .then(([sessRes, auditRes]) => {
         setSessions(sessRes.sessions);
@@ -216,7 +221,7 @@ const SecurityTab = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                          <h4 className="text-sm font-bold text-white">{s.device_label || "Unknown Node"}</h4>
-                         {s.session_id === (supabase.auth.getSession().then(r => r.data.session?.user.id) && "current") && (
+                         {currentSessionId && s.session_id === currentSessionId && (
                            <Badge className="bg-emerald-500/20 text-emerald-400 border-none text-[9px] uppercase font-black">Main</Badge>
                          )}
                       </div>

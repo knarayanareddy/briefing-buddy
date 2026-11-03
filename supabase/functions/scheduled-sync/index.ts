@@ -31,7 +31,10 @@ serve(async (req: Request) => {
   const supabase = createClient(config.SUPABASE_URL!, config.SUPABASE_SERVICE_ROLE_KEY!);
 
   try {
-    const { provider, max_users = 20 } = await req.json().catch(() => ({}));
+    // NOTE: no `provider` filter — sync-required-connectors derives the
+    // provider set from each profile's module manifest. A caller-supplied
+    // provider was accepted but silently ignored; it is no longer read.
+    const { max_users = 20 } = await req.json().catch(() => ({}));
 
     const { data: activeUsers, error: userErr } = await supabase
       .from("briefing_profiles")

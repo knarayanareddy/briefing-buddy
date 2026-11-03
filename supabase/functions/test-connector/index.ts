@@ -107,7 +107,7 @@ serve(async (req: Request) => {
        await initOrUpsertHealthOnConnect(supabase, { userId, provider, connected: false, status: 'error' }).catch(() => {});
     }
     return new Response(JSON.stringify({ ok: false, message: e.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });

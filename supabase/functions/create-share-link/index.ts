@@ -11,23 +11,56 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const auth = await authorizeRequest(req, config);
-  if (!auth.ok) {
-    return new Response(JSON.stringify(auth.body), { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
+  if (!auth.ok) return json(auth.body, auth.status);
+  if (!auth.user_id) return json({ error: "unauthorized" }, 401);
 
-  const userId = auth.user_id!;
+  const userId = auth.user_id;
   const supabase = createClient(config.SUPABASE_URL!, config.SUPABASE_SERVICE_ROLE_KEY!);
-  
-  try {
-    const { script_id, job_id, expires_in_days = 7 } = await req.json();
-    if (!script_id) throw new Error("Missing script_id");
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + expires_in_days);
+  try {
+    const {
+      script_id,
+      job_id,
+      expires_in_hours,
+      expires_in_days,
+      allow_transcript = true,
+      allow_action_cards = false,
+    } = await req.json();
+
+    if (!script_id || typeof script_id !== "string") {
+      return json({ error: "Missing script_id" }, 400);
+    }
+
+    // Ownership check: only the script's owner may share it (prevents IDOR).
+    const { data: script, error: sErr } = await supabase
+      .from("briefing_scripts")
+      .select("id")
+      .eq("id", script_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (sErr) throw sErr;
+    if (!script) return json({ error: "Script not found" }, 404);
+
+    // The client sends expires_in_hours; keep expires_in_days for older callers.
+    const hours =
+      typeof expires_in_hours === "number" && Number.isFinite(expires_in_hours) && expires_in_hours > 0
+        ? expires_in_hours
+        : typeof expires_in_days === "number" && Number.isFinite(expires_in_days) && expires_in_days > 0
+          ? expires_in_days * 24
+          : 24 * 7;
+
+    const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
 
     const { data, error } = await supabase
       .from("briefing_shares")
@@ -36,28 +69,28 @@ serve(async (req: Request) => {
         script_id,
         job_id: job_id || null,
         expires_at: expiresAt.toISOString(),
-        scope: 'render'
+        scope: "render",
+        include_transcript: Boolean(allow_transcript),
+        allow_action_cards: Boolean(allow_action_cards),
       })
       .select("id")
       .single();
 
     if (error) throw error;
 
-    // In a real implementation: Sign a JWT or return the ID as the token
-    const token = data.id; 
-    const shareUrl = `${config.SUPABASE_URL?.replace('.supabase.co', '.lovable.app')}/today?t=${token}`; // Mocking the frontend URL
+    // Relative URL on this app's origin: the client prefixes window.location.origin.
+    // (The old absolute URL pointed at a wrong .lovable.app host and /today?t=…,
+    // which no route read — the real share route is /share/:token.)
+    const shareUrl = `/share/${data.id}`;
 
-    return new Response(JSON.stringify({ 
+    return json({
       share_id: data.id,
-      token: token,
-      share_url: shareUrl
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      token: data.id,
+      share_url: shareUrl,
+      expires_at: expiresAt.toISOString(),
     });
-
   } catch (e: any) {
-    return new Response(JSON.stringify({ ok: false, message: e.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
+    console.error("create-share-link error:", e.message);
+    return json({ error: e.message || "Failed to create share link" }, 500);
   }
 });

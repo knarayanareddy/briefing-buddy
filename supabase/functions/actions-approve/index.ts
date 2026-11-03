@@ -47,13 +47,20 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: `Cannot approve/cancel action in status '${action.status}'` }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Conditional transition: only proposed→(approved|canceled) wins, so
+    // concurrent approve/cancel requests can't both take effect.
     const newStatus = approve ? "approved" : "canceled";
-    const { error: updateErr } = await supabase
+    const { data: claimed, error: updateErr } = await supabase
       .from("actions")
       .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq("id", action_id);
+      .eq("id", action_id)
+      .eq("status", "proposed")
+      .select("id");
 
     if (updateErr) throw updateErr;
+    if (!claimed || claimed.length === 0) {
+      return new Response(JSON.stringify({ error: "Action was already transitioned by another request" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     return new Response(JSON.stringify({ action_id, status: newStatus }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 

@@ -26,7 +26,9 @@ serve(async (req: Request) => {
   try {
     const summary = await getConnectorStatusSummary(supabase, userId);
     
-    const rssReady = summary.find(p => p.provider === 'rss')?.configured || false;
+    // Summary rows expose `connected` (config present); the old `.configured`
+    // read was always undefined, so RSS was permanently reported missing.
+    const rssReady = summary.find(p => p.provider === 'rss')?.connected || false;
     const missing = [];
     if (!rssReady) missing.push("RSS");
 
@@ -45,7 +47,7 @@ serve(async (req: Request) => {
 
   } catch (e: any) {
     return new Response(JSON.stringify({ ok: false, message: e.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });

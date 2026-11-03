@@ -1,5 +1,5 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "briefing-buddy",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,9 +8,11 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:deno": "deno test --allow-env --allow-net --allow-read supabase/functions/_shared/planner_test.ts supabase/functions/generate-script/generate-script_test.ts supabase/functions/assemble-user-data/assemble-user-data_test.ts tests/health_test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -66,7 +68,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@playwright/test": "^1.57.0",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",

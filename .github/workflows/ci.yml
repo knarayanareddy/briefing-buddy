@@ -7,12 +7,56 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
-      - run: bun install --frozen-lockfile
-      - run: bun run build
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests (vitest)
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  edge-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Syntax/lint gate: parses every edge function & test file. The excluded
+      # rules are pre-existing codebase-wide style patterns (https-import
+      # prefixes, `any`s) tracked separately; everything else must pass.
+      - name: Edge function lint (syntax gate)
+        run: >-
+          deno lint
+          --rules-exclude=no-explicit-any,no-import-prefix,no-unused-vars,require-await
+          supabase/functions tests
+
+      # Unit tests only: they need no secrets and no network beyond deno/esm
+      # module fetches. Integration tests (tests/milestone_*) require
+      # SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY and run separately.
+      - name: Edge function unit tests (Deno)
+        run: >-
+          deno test --allow-env --allow-net --allow-read
+          supabase/functions/_shared/planner_test.ts
+          supabase/functions/generate-script/generate-script_test.ts
+          supabase/functions/assemble-user-data/assemble-user-data_test.ts
+          tests/health_test.ts

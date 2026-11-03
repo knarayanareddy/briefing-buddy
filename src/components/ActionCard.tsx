@@ -76,6 +76,7 @@ export function ActionCard({ card, dialogue, segmentIndex, totalSegments, script
   }, [card]);
 
   const handlePropose = useCallback(async () => {
+    if (!card) return;
     if (!card.provider && !card.action_type) return;
     setLifecycle("proposing");
     setError(null);

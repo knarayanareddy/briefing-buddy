@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Parser from "https://esm.sh/rss-parser@3.13.0";
 import { config, validateConfig } from "../_shared/config.ts";
 import { authorizeRequest } from "../_shared/auth.ts";
+import { assertSafeFetchUrl } from "../_shared/ssrfGuard.ts";
 
 validateConfig();
 const parser = new Parser();
@@ -22,9 +23,22 @@ serve(async (req: Request) => {
 
   try {
     const { url } = await req.json();
-    if (!url) throw new Error("Missing feed URL");
+    if (!url) {
+      return new Response(JSON.stringify({ ok: false, message: "Missing feed URL" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
 
-    const res = await fetch(url, { headers: { "User-Agent": "Morning-Briefing-Bot/1.0" } });
+    let safeUrl: string;
+    try {
+      safeUrl = assertSafeFetchUrl(url);
+    } catch (e: any) {
+      return new Response(JSON.stringify({ ok: false, message: e.message }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const res = await fetch(safeUrl, { headers: { "User-Agent": "Morning-Briefing-Bot/1.0" } });
     if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
     
     const xml = await res.text();
@@ -40,7 +54,7 @@ serve(async (req: Request) => {
 
   } catch (e: any) {
     return new Response(JSON.stringify({ ok: false, message: e.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });

@@ -1,38 +1,72 @@
-# Public Share Links Testing & Architecture
+# Public Share Links — Architecture & Testing
 
-## Security and Cryptography
-The public share links leverage a stateless Web Crypto HMAC-SHA256 implementation coupled with stateful database assertions. 
-- Tokens are of the form `base64url(JSON) + "." + base64url(Signature)`.
-- Replay/expiry attacks are mitigated by validating the embedded `exp` timestamp combined with a database-enforced `expired_at` and `revoked_at` column checks.
-- Internal secrets, connector metadata, and API keys are strictly guarded and omitted from all public endpoint responses (`get-shared-briefing`). This is achieved using deep cloning and explicit object deletions before serialization to the public perimeter.
+## How sharing actually works
 
-## Testing Checklist
+Share links are **opaque UUID tokens backed by database state** — not stateless
+signed tokens. (`supabase/functions/_shared/shareToken.ts` contains an unused
+HMAC prototype; it is not wired into the live flow.)
 
-### 1) Create a Rendered Briefing
-- **Pre-requisite:** Ensure you have logged in as a valid user and initiated a complete rendering job either from `Today` or the `BriefingBuilder`.
-- The rendering job status in the Database must be 'complete' with generated video endpoints.
+### Create — `create-share-link`
+- Requires auth (JWT or internal key). **Ownership check**: the caller must own
+  the `script_id` (404 otherwise), preventing IDOR against arbitrary scripts.
+- Accepts `expires_in_hours` (the ShareDialog sends this) or `expires_in_days`
+  (legacy callers). Defaults to 7 days.
+- Persists `include_transcript` / `allow_action_cards` toggles on the row.
+- Returns `{ share_id, token, share_url, expires_at }` where `share_url` is a
+  **relative path** (`/share/<uuid>`). The client prefixes
+  `window.location.origin`, so the link always points at the current app host.
+- The app route is `/share/:token` (`src/App.tsx`); the backend never emits the
+  legacy `/today?t=…` URL.
 
-### 2) Generate Share Link
-- Navigate to the `Today` or `History` tab.
-- Click the **Share** button.
-- Modify the expiry (e.g., set to 1 Hour) and leave "Include Transcript" toggled on.
-- Click **Create Public Link**. Verify that an absolute URL containing `/share/<token>` is generated. Copied successfully.
+### Read — `get-shared-briefing?t=<token>` (public, no auth)
+- Status codes: `400` missing token, `404` invalid/revoked/not found,
+  `410` expired, `500` internal.
+- Response shape (matches `SharedBrief.tsx`):
+  ```json
+  {
+    "script": { "id", "title", "persona", "created_at",
+                "script_json": { "timeline_segments": [...] } },
+    "render": { "id", "status", "updated_at",
+                "segments": [ { "segment_id", "status", "video_url",
+                                "broll_url", "dialogue", "segment_type" } ] },
+    "share":  { "expires_at", "scope", "created_at", "view_count" }
+  }
+  ```
+- **Render segments come from `rendered_segments`** (keyed by `job_id`), never
+  from `render_jobs.segments` — that jsonb column is never written by the
+  pipeline.
+- Public payload hygiene: `grounding_source_id` and `runware_b_roll_prompt` are
+  stripped from timeline segments; `dialogue` is nulled when the share was
+  created with `allow_transcript: false`; `ui_action_card` is nulled unless
+  `allow_action_cards: true`.
+- View tracking: best-effort `increment_share_view` RPC (migration
+  `20261103120000`) which only counts live (unrevoked, unexpired) shares.
 
-### 3) Public Access (Incognito)
-- Open an incognito browser window (to ensure no JWT or authentication headers are attached).
-- Paste the share URL.
-- **Expected Result:** The briefing player should load with the "Shared Briefing" header. 
-- The video timeline should automatically stitch the segments together, properly rendering subtitles if the transcript was enabled. Action items should strictly be disabled.
-- **Data Leak Check:** Verify through browser DevTools that the network response from `get-shared-briefing` contains no raw properties for `connectors`, `grounding_source_id`, or `user_data`.
+### Revoke — `revoke-share-link`
+- Sets `revoked_at` scoped by owner (`user_id`), returns `404` when no live row
+  matched. Revocation is enforced on every subsequent read.
 
-### 4) Revoke the Share
-- Return to your authenticated browser session.
-- (For direct database manipulation if UI management is pending): Update the row inside `briefing_shares` where `id` matches the generated share, setting `revoked_at = now()`.
-- Return to the incognito window and refresh.
-- **Expected Result:** A 403 "Access Revoked" red warning screen.
+### Schema — migration `20261103120000_share_links_fix.sql`
+- Adds `revoked_at`, `view_count`, `last_viewed_at`, `include_transcript`,
+  `allow_action_cards`; backfills and drops the legacy `revoked` boolean;
+  creates `increment_share_view`.
 
-### 5) Expiration
-- Generate a brand new link with Expiry set to 1 hour.
-- Intervene in Supabase directly and mock the `expires_at` column for that particular share row to a timestamp safely in the past (e.g., yesterday).
-- Access the link in your incognito window.
-- **Expected Result:** A 410 "Share link expired" or mathematical HMAC error indicating the JWT stamp fails validation against the window. The endpoint drops the connection gracefully.
+## Manual testing checklist
+
+1. **Create a rendered briefing** — log in, generate, and complete a render job
+   (job status `complete` with video URLs).
+2. **Generate share link** — Share button → set expiry (e.g. 1 hour), toggle
+   "Include Transcript" → create. Expect an absolute URL containing
+   `/share/<token>` (origin + relative path) and a success toast.
+3. **Public access (incognito)** — open the link logged out:
+   - Header shows the briefing title and an "Expires" badge.
+   - Video stage + timeline load; subtitles appear when transcript was enabled.
+   - **Data leak check** (DevTools → `get-shared-briefing` response): no
+     `grounding_source_id`, `runware_b_roll_prompt`, connector config, or
+     `user_data` anywhere in the payload.
+4. **Revoke** — authenticated, set `revoked_at = now()` (or call
+   `revoke-share-link`), refresh incognito → `404 Invalid share link.`
+5. **Expiration** — backdate `expires_at` to yesterday, refresh incognito →
+   `410 This share link has expired.`
+6. **Status codes** — confirm `200` for a live link; `404`/`410` never arrive
+   as `200 { error: … }`.

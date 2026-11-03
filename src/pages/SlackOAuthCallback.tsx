@@ -5,21 +5,8 @@ import { Button } from "@/components/ui/button";
 
 async function completeSlackOAuth(code: string, state: string) {
   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
-  const { supabase } = await import("@/integrations/supabase/client");
-  const { data: sessionData } = await supabase.auth.getSession();
-  const session = sessionData.session;
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-  };
-
-  if (session) {
-    headers["Authorization"] = `Bearer ${session.access_token}`;
-  } else {
-    headers["x-internal-api-key"] = "hackathon_unlocked_preview_2024";
-    headers["x-preview-user-id"] = import.meta.env.VITE_DEMO_USER_ID || "00000000-0000-0000-0000-000000000000";
-  }
+  const { buildEdgeHeaders } = await import("@/lib/edgeHeaders");
+  const headers = await buildEdgeHeaders();
 
   const res = await fetch(`${SUPABASE_URL}/functions/v1/slack-oauth-callback`, {
     method: "POST",

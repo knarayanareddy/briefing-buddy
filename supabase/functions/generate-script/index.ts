@@ -34,8 +34,18 @@ serve(async (req: Request) => {
 
   // ── PHASE 0: Usage Limits ────────────────────────────────────────────────
   const GEN_LIMIT = parseInt(Deno.env.get("DAILY_GENERATE_LIMIT") || "50");
-  const { exceeded, current } = await checkLimitExceeded(supabase, userId, "generate", GEN_LIMIT);
-  
+  const { exceeded, current, error: usageError } = await checkLimitExceeded(supabase, userId, "generate", GEN_LIMIT);
+
+  if (usageError) {
+    // Fail closed: usage check unavailable — do not allow uncounted spend.
+    return new Response(JSON.stringify({
+      error: "usage_check_unavailable",
+      message: "Usage accounting is temporarily unavailable. Please try again shortly."
+    }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+
   if (exceeded) {
     return new Response(JSON.stringify({ 
       error: "rate_limit_exceeded", 

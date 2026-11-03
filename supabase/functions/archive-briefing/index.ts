@@ -40,7 +40,7 @@ serve(async (req: Request) => {
 
   } catch (e: any) {
     return new Response(JSON.stringify({ ok: false, message: e.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });

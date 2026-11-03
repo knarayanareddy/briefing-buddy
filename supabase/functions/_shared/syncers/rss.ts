@@ -3,6 +3,7 @@ import Parser from "https://esm.sh/rss-parser@3.13.0";
 import { stableSourceId } from "../stableId.ts";
 import { sanitizeDeep } from "../sanitize.ts";
 import { recordSyncAttemptStart, recordSyncSuccess, recordSyncFailure } from "../connectorHealth.ts";
+import { assertSafeFetchUrl } from "../ssrfGuard.ts";
 
 const parser = new Parser();
 
@@ -61,7 +62,9 @@ export async function syncRssForUser(
       if (state?.last_modified) headers["If-Modified-Since"] = state.last_modified;
 
       try {
-        const response = await fetch(feedUrl, { headers });
+        // SSRF guard: user-configured feed URLs must not reach private hosts.
+        // Throws into the per-feed catch below → recorded as a failed attempt.
+        const response = await fetch(assertSafeFetchUrl(feedUrl), { headers });
         
         // Handle Not Modified
         if (response.status === 304) {

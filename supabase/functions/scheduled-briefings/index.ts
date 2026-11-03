@@ -10,6 +10,34 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PUT",
 };
 
+/**
+ * Convert a local wall-clock time (YYYY-MM-DD + hour) in IANA timezone `tz`
+ * to the true UTC instant. `${date}T07:00:00Z` would mean 7am UTC, not 7am
+ * local — off by the whole timezone offset for every non-UTC user.
+ */
+function localWallTimeToUtcISO(localDateStr: string, hour: number, tz: string): string {
+  const naiveUtc = Date.parse(`${localDateStr}T${String(hour).padStart(2, "0")}:00:00Z`);
+  const offsetAt = (t: number): number => {
+    try {
+      const parts = Object.fromEntries(
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: tz, hour12: false,
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+        }).formatToParts(new Date(t)).map(p => [p.type, p.value])
+      );
+      const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, (+parts.hour) % 24, +parts.minute, +parts.second);
+      return asUtc - t;
+    } catch {
+      return 0; // invalid tz → treat as UTC
+    }
+  };
+  // Two passes: second pass uses the offset at the corrected instant (DST edges).
+  const first = naiveUtc - offsetAt(naiveUtc);
+  const second = naiveUtc - offsetAt(first);
+  return new Date(second).toISOString();
+}
+
 function isProfileDue(profile: any, now: Date): { due: boolean; scheduledFor: string } {
   const tz = profile.timezone || "America/Los_Angeles";
   
@@ -39,7 +67,7 @@ function isProfileDue(profile: any, now: Date): { due: boolean; scheduledFor: st
   
   if (freq === 'daily') {
     if (localHour < 7) return { due: false, scheduledFor: "" };
-    const scheduledFor = `${localDateStr}T07:00:00Z`; 
+    const scheduledFor = localWallTimeToUtcISO(localDateStr, 7, tz);
     
     if (lastTriggered) {
       // Check if we already fired today
@@ -53,9 +81,8 @@ function isProfileDue(profile: any, now: Date): { due: boolean; scheduledFor: st
   
   if (freq === 'twice_daily') {
     if (localHour < 7) return { due: false, scheduledFor: "" };
-    let slotHour = "07";
-    if (localHour >= 16) slotHour = "16";
-    const scheduledFor = `${localDateStr}T${slotHour}:00:00Z`;
+    const slotHour = localHour >= 16 ? 16 : 7;
+    const scheduledFor = localWallTimeToUtcISO(localDateStr, slotHour, tz);
     
     if (lastTriggered) {
       if ((now.getTime() - lastTriggered.getTime()) / 3600000 < 6) {

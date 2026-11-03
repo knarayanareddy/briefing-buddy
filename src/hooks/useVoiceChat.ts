@@ -35,6 +35,11 @@ function detectCommand(text: string): "pause" | "resume" | "repeat" | "skip" | "
   return null;
 }
 
+async function getAuthHeaders() {
+  const { buildEdgeHeaders } = await import("@/lib/edgeHeaders");
+  return buildEdgeHeaders();
+}
+
 export function useVoiceChat({ scriptId, currentSegmentId, contextSegments, onCommand }: UseVoiceChatOptions) {
   const [messages, setMessages] = useState<VoiceMessage[]>([]);
   const [isListening, setIsListening] = useState(false);
@@ -46,22 +51,6 @@ export function useVoiceChat({ scriptId, currentSegmentId, contextSegments, onCo
   const recognitionRef = useRef<any>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const responseCacheRef = useRef<Map<string, { content: string; citedSources?: VoiceMessage["citedSources"]; ts: number }>>(new Map());
-
-  const getAuthHeaders = useCallback(async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const session = sessionData.session;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    };
-    if (session) {
-      headers["Authorization"] = `Bearer ${session.access_token}`;
-    } else {
-      headers["x-internal-api-key"] = "hackathon_unlocked_preview_2024";
-      headers["x-preview-user-id"] = "00000000-0000-0000-0000-000000000000";
-    }
-    return headers;
-  }, []);
 
   const stopSpeaking = useCallback(() => {
     window.speechSynthesis.cancel();
@@ -175,7 +164,7 @@ export function useVoiceChat({ scriptId, currentSegmentId, contextSegments, onCo
     } finally {
       setIsProcessing(false);
     }
-  }, [scriptId, currentSegmentId, contextSegments, getAuthHeaders, isProcessing, onCommand, speak]);
+  }, [scriptId, currentSegmentId, contextSegments, isProcessing, onCommand, speak]);
 
   const startListening = useCallback(() => {
     setError(null);

@@ -39,7 +39,7 @@ export function DebugPanel({ scriptJson, jobStatus, errors }: DebugPanelProps) {
               }`}>{jobStatus}</span>
             </div>
           )}
-          {scriptJson && (
+          {scriptJson != null && (
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-1">Script JSON:</p>
               <pre className="text-xs font-mono text-muted-foreground bg-muted p-3 rounded overflow-auto max-h-40">
