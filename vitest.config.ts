@@ -22,7 +22,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       // briefingSchema.ts imports zod from esm.sh (for Deno edge runtime);
       // map it to the npm zod dependency so vitest can resolve it offline.
-      "https://esm.sh/zod@3.22.4": "zod",
+      "https://esm.sh/zod@4.6.7": "zod",
     },
   },
 });
