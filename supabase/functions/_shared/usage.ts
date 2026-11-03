@@ -1,48 +1,40 @@
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
- * Checks and increments the daily usage limit for a user.
- * Returns true if the limit is exceeded.
+ * Atomically checks AND increments the daily usage limit for a user.
+ * Delegates to the consume_daily_usage Postgres function (migration
+ * 20261103130000), which serializes concurrent callers with a row lock.
+ *
+ * Failure policy: FAIL CLOSED. If the usage check cannot run, we deny the
+ * request (`error` set) rather than letting unlimited LLM/render spend
+ * through — callers should surface this as 503, not as a 429 limit message.
  */
 export async function checkLimitExceeded(
   supabase: SupabaseClient,
   userId: string,
   type: "generate" | "render",
   limit: number
-): Promise<{ exceeded: boolean; current: number }> {
-  const day = new Date().toISOString().split("T")[0];
+): Promise<{ exceeded: boolean; current: number; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc("consume_daily_usage", {
+      p_user_id: userId,
+      p_type: type,
+      p_limit: limit,
+    });
 
-  // Atomic upsert with increment logic (Postgres function could be better, 
-  // but for hackathon we use SELECT then UPSERT with optimistic assumption or just service-role bypass)
-  const { data, error } = await supabase
-    .from("briefing_usage_limits")
-    .select("generate_count, render_count")
-    .eq("user_id", userId)
-    .eq("day", day)
-    .single();
+    if (error) {
+      console.error(`Usage check failed for user ${userId}:`, error.message);
+      return { exceeded: true, current: limit, error: error.message };
+    }
 
-  if (error && error.code !== "PGRST116") {
-    // Some other error
-    console.error(`Usage check error for user ${userId}:`, error.message);
-    return { exceeded: false, current: 0 }; // Fail open for safety or closed for cost? Let's fail open.
+    return {
+      exceeded: Boolean(data?.exceeded),
+      current: Number(data?.current ?? 0),
+    };
+  } catch (e: any) {
+    console.error(`Usage check threw for user ${userId}:`, e?.message);
+    return { exceeded: true, current: limit, error: e?.message ?? "usage check failed" };
   }
-
-  const currentCount = data ? (type === "generate" ? data.generate_count : data.render_count) : 0;
-
-  if (currentCount >= limit) {
-    return { exceeded: true, current: currentCount };
-  }
-
-  // Increment
-  const update = type === "generate" 
-    ? { generate_count: currentCount + 1 } 
-    : { render_count: currentCount + 1 };
-
-  await supabase
-    .from("briefing_usage_limits")
-    .upsert({ user_id: userId, day, ...update }, { onConflict: "user_id, day" });
-
-  return { exceeded: false, current: currentCount + 1 };
 }
 
 /**

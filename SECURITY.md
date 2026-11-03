@@ -17,6 +17,12 @@ This document outlines the security architecture and operational practices for t
 
 ## 3. Rate Limiting & Quotas
 - **Enforcement**: Per-user daily limits for script generation and media rendering.
+- **Atomicity**: Check-and-increment runs in a single Postgres function
+  (`consume_daily_usage`, migration `20261103130000_atomic_usage_limits.sql`)
+  under a row lock — concurrent requests cannot bypass the limit.
+- **Failure policy**: **Fail closed.** If the usage check errors, callers
+  return `503 usage_check_unavailable` and the operation is denied (we never
+  allow uncounted LLM/render spend through on a broken check).
 - **Config**: Managed via `DAILY_GENERATE_LIMIT` and `DAILY_RENDER_LIMIT` environment variables.
 - **Table**: `briefing_usage_limits` (tracks daily counts per `user_id`).
 

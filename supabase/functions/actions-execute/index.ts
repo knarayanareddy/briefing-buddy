@@ -84,8 +84,19 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: `No executor for action_type '${action.action_type}'` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Transition to executing
-    await supabase.from("actions").update({ status: "executing", updated_at: new Date().toISOString() }).eq("id", action_id);
+    // Transition to executing — conditional on status so concurrent
+    // double-fires serialize: only the request that flips approved→executing
+    // proceeds; losers get 0 affected rows and must bail out.
+    const { data: claimed, error: claimErr } = await supabase
+      .from("actions")
+      .update({ status: "executing", updated_at: new Date().toISOString() })
+      .eq("id", action_id)
+      .eq("status", "approved")
+      .select("id");
+    if (claimErr) throw claimErr;
+    if (!claimed || claimed.length === 0) {
+      return new Response(JSON.stringify({ error: "Action was claimed by another request", action_id, status: "conflict" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // Execute
     const result = await executor(

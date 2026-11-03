@@ -3,7 +3,6 @@ import {
   generateScript, 
   startRender, 
   getJobStatus, 
-  setInternalApiKey, 
   assembleUserData, 
   getBriefing,
   getUserSettings,

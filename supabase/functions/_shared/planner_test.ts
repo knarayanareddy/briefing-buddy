@@ -1,7 +1,9 @@
 import { assertEquals, assert } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 import { planSegments, SegmentPlan } from "../_shared/planner.ts";
 import { AssembledUserData } from "../_shared/userData.ts";
-import { ModuleId } from "../_shared/moduleCatalog.ts";
+// Manifest (moduleManifest.ts) is the authoritative catalog used by
+// planSegments/getModule; the older moduleCatalog.ts is dead code.
+import { ModuleId } from "../_shared/moduleManifest.ts";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -54,11 +56,14 @@ Deno.test("given 5 news with cap=3 => 1 digest + 3 items = 4 news plans + wrap",
   assertEquals(wraps.length, 1);
 });
 
-Deno.test("given 3 PRs with default cap=2 => 1 digest + 2 PR items", () => {
+Deno.test("given 3 PRs with caps override 2 => 1 digest + 2 PR items", () => {
+  // Tests the cap MECHANISM (profile override honored), not a config default:
+  // moduleManifest sets github_prs default maxSegments=5 while the dead
+  // moduleCatalog.ts said 2 — defaults have drifted before, overrides haven't.
   const userData: AssembledUserData = { ...baseUserData, github_prs: makePRs(3) };
   const plans = planSegments({
     enabledModules: ["github_prs"] as ModuleId[],
-    moduleSettings: {},
+    moduleSettings: { github_prs: { caps: 2 } },
     userData,
   });
   const ghDig = plans.filter(p => p.segment_kind === "github_digest");
@@ -143,20 +148,28 @@ Deno.test("inactive actions have empty string payload, not '#'", () => {
   assertEquals(items[0].ui_action_suggestion.action_payload, "");
 });
 
-Deno.test("focus_plan only emits when actionable items exist from earlier plans", () => {
+Deno.test("focus_plan is gated as coming_soon in the manifest and never emits", () => {
   const news = makeNews(2);
   const userData: AssembledUserData = { ...baseUserData, news_items: news };
 
-  // With ai_news_delta enabled → items have real URLs → focus_plan should emit
   const plans = planSegments({
     enabledModules: ["ai_news_delta", "focus_plan"] as ModuleId[],
     moduleSettings: {},
     userData,
   });
-  const focus = plans.filter(p => p.segment_kind === "focus_plan");
-  assertEquals(focus.length, 1);
 
-  // With no data → nothing → focus_plan must NOT emit
+  // Manifest (moduleManifest.ts) marks focus_plan availability:"coming_soon"
+  // and planSegments skips those modules entirely — even when actionable
+  // items from earlier plans exist. The news assertions below prove the gate
+  // (not missing data) is why focus is absent.
+  // TODO(product): focus_plan is listed in planner defaultModuleIds while
+  // being coming_soon — flip availability or drop it from the defaults.
+  const focus = plans.filter(p => p.segment_kind === "focus_plan");
+  assertEquals(focus.length, 0);
+  const newsItems = plans.filter(p => p.segment_kind === "news_item");
+  assertEquals(newsItems.length, 2);
+
+  // With no data → nothing at all
   const emptyPlans = planSegments({
     enabledModules: ["focus_plan"] as ModuleId[],
     moduleSettings: {},

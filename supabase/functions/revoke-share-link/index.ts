@@ -11,36 +11,41 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const auth = await authorizeRequest(req, config);
-  if (!auth.ok) {
-    return new Response(JSON.stringify(auth.body), { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
+  if (!auth.ok) return json(auth.body, auth.status);
+  if (!auth.user_id) return json({ error: "unauthorized" }, 401);
 
-  const userId = auth.user_id!;
+  const userId = auth.user_id;
   const supabase = createClient(config.SUPABASE_URL!, config.SUPABASE_SERVICE_ROLE_KEY!);
-  
+
   try {
     const { share_id } = await req.json();
-    if (!share_id) throw new Error("Missing share_id");
+    if (!share_id) return json({ error: "Missing share_id" }, 400);
 
-    const { error } = await supabase
+    // Scope the update by owner so users cannot revoke other users' shares.
+    const { data, error } = await supabase
       .from("briefing_shares")
       .update({ revoked_at: new Date().toISOString() })
       .eq("id", share_id)
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .is("revoked_at", null)
+      .select("id");
 
     if (error) throw error;
+    if (!data || data.length === 0) return json({ error: "Share link not found" }, 404);
 
-    return new Response(JSON.stringify({ status: "revoked" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-
+    return json({ status: "revoked" });
   } catch (e: any) {
-    return new Response(JSON.stringify({ ok: false, message: e.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
+    console.error("revoke-share-link error:", e.message);
+    return json({ error: e.message || "Failed to revoke share link" }, 500);
   }
 });

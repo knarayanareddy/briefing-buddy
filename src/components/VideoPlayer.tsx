@@ -18,19 +18,8 @@ const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tts-scene`;
 const ttsCache = new Map<string, string>();
 
 async function getTtsHeaders() {
-  const { supabase } = await import("@/integrations/supabase/client");
-  const { data } = await supabase.auth.getSession();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-  };
-  if (data.session) {
-    headers["Authorization"] = `Bearer ${data.session.access_token}`;
-  } else {
-    headers["x-internal-api-key"] = "hackathon_unlocked_preview_2024";
-    headers["x-preview-user-id"] = "00000000-0000-0000-0000-000000000000";
-  }
-  return headers;
+  const { buildEdgeHeaders } = await import("@/lib/edgeHeaders");
+  return buildEdgeHeaders();
 }
 
 export function VideoPlayer({ videoUrl, bRollUrl, segmentLabel, dialogue, onEnded, isPlaying }: VideoPlayerProps) {

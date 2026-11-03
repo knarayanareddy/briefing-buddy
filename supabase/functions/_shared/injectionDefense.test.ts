@@ -31,10 +31,9 @@ describe("Prompt Injection Defense (Validation)", () => {
       ],
     };
 
-    // Zod strip() would remove the extra field by default, but we should ensure 
-    // it doesn't pass a strict validation if we used strict().
-    // Our current schema uses Zod which by default ignores unknown keys.
-    expect(() => validateBriefingScript(maliciousOutput)).not.toThrow();
+    // The schema is hardened with .strict(), so unknown keys injected by a
+    // compromised/prompt-injected LLM must cause validation to throw.
+    expect(() => validateBriefingScript(maliciousOutput)).toThrow();
   });
 
   it("should reject invalid card_types even if injected", () => {

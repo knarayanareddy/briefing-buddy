@@ -42,7 +42,7 @@ serve(async (req: Request) => {
          error: "not_configured",
          message: "Google OAuth client not configured on server." 
        }), {
-         headers: { ...corsHeaders, "Content-Type": "application/json" }
+         status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" }
        });
     }
 
@@ -57,7 +57,7 @@ serve(async (req: Request) => {
 
   } catch (e: any) {
     return new Response(JSON.stringify({ ok: false, message: e.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });

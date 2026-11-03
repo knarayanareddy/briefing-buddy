@@ -69,6 +69,9 @@ My Morning Brief aggregates your data sources (email, calendar, GitHub, news, st
     └─────────────────────────────────────────────────────┘
 ```
 
+> **Note:** scheduled sync/briefings require a one-time manual cron setup —
+> no migration installs it. See [docs/scheduling.md](docs/scheduling.md).
+
 ---
 
 ## End-to-End Demo Flow
@@ -246,6 +249,23 @@ npm install
 # 4. Run locally
 npm run dev
 ```
+
+---
+
+## Development
+
+```bash
+npm run lint        # ESLint
+npm run typecheck   # tsc --noEmit (strict mode)
+npm test            # vitest: frontend + shared edge-function unit tests
+npm run test:deno   # Deno unit tests for edge functions (requires Deno 2.x)
+npm run build       # production build
+```
+
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests, and build on
+every push/PR. Deno tests run in CI with network access; `tests/milestone_*`
+are integration tests requiring live `SUPABASE_URL` +
+`SUPABASE_SERVICE_ROLE_KEY` and are not part of the default runs.
 
 ---
 

@@ -1,13 +1,9 @@
-import { supabase } from "@/integrations/supabase/client";
+import { buildEdgeHeaders } from "@/lib/edgeHeaders";
 
 // --- Configuration & Base Request Logic ---
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
 const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
-
-let internalApiKey = "";
-export const setInternalApiKey = (key: string) => { internalApiKey = key; };
-export const getInternalApiKey = () => internalApiKey;
 
 /**
  * Universal caller for Supabase Edge Functions.
@@ -21,21 +17,7 @@ async function callEdgeFunction<T>(
   const url = new URL(`${FUNCTIONS_BASE}/${fnName}`);
   if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
-  const { data: sessionData } = await supabase.auth.getSession();
-  const session = sessionData.session;
-  const demoAuthMode = import.meta.env.VITE_DEMO_AUTH_MODE || "internal_key";
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-  };
-
-  if (session) {
-    headers["Authorization"] = `Bearer ${session.access_token}`;
-  } else if (demoAuthMode === "internal_key") {
-    headers["x-internal-api-key"] = internalApiKey || "hackathon_unlocked_preview_2024";
-    headers["x-preview-user-id"] = import.meta.env.VITE_DEMO_USER_ID || "00000000-0000-0000-0000-000000000000";
-  }
+  const headers = await buildEdgeHeaders();
 
   const res = await fetch(url.toString(), {
     method,
@@ -45,12 +27,16 @@ async function callEdgeFunction<T>(
 
   if (!res.ok) {
     let errorMsg = `Edge function ${fnName} failed (${res.status})`;
-    try {
-      const errorJson = await res.json();
-      errorMsg = errorJson.error || errorJson.message || errorMsg;
-    } catch {
-      const text = await res.text();
-      if (text) errorMsg = text;
+    // Read the body ONCE as text, then try to parse — res.json() followed by
+    // res.text() would throw ("body already used") and hide the real message.
+    const raw = await res.text().catch(() => "");
+    if (raw) {
+      try {
+        const errorJson = JSON.parse(raw);
+        errorMsg = errorJson.error || errorJson.message || errorMsg;
+      } catch {
+        errorMsg = raw.slice(0, 500);
+      }
     }
     throw new Error(errorMsg);
   }
@@ -279,13 +265,12 @@ export async function setConnectorSecret(provider: string, secret_payload: any) 
 }
 
 export async function getConnectorConfig(provider: string) {
-  const { data, error } = await (supabase as any)
-    .from("connector_configs")
-    .select("config")
-    .eq("provider", provider)
-    .maybeSingle();
-  if (error) throw error;
-  return data?.config || null;
+  // Edge function (owner-scoped, works in demo mode too) — no direct table query.
+  const res = await callEdgeFunction<{ config: any }>("get-connector-config", {
+    method: "GET",
+    params: { provider },
+  });
+  return res?.config || null;
 }
 
 export async function disconnectConnector(provider: string) {
@@ -466,15 +451,12 @@ export async function getAction(actionId: string): Promise<ActionRecord> {
 // --- Evidence / Sources ---
 
 export async function getEvidenceItem(sourceId: string) {
-  // Query synced_items by source_id through the existing briefing-sources endpoint
-  // or directly from supabase client
-  const { data, error } = await (supabase as any)
-    .from("synced_items")
-    .select("*")
-    .eq("source_id", sourceId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  // Edge function (owner-scoped, works in demo mode too) — no direct table query.
+  const res = await callEdgeFunction<{ item: any }>("get-evidence-item", {
+    method: "GET",
+    params: { source_id: sourceId },
+  });
+  return res?.item ?? null;
 }
 
 // --- Integration Lab & Preflight ---

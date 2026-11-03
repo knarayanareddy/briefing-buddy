@@ -17,9 +17,14 @@ serve(async (req: Request) => {
   }
 
   const auth = await authorizeRequest(req, config);
-  if (!auth.ok || !auth.user_id) {
-    return new Response(JSON.stringify({ error: auth.body?.error || "Unauthorized" }), {
-      status: auth.status || 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  if (!auth.ok) {
+    return new Response(JSON.stringify(auth.body), {
+      status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  if (!auth.user_id) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -31,16 +36,33 @@ serve(async (req: Request) => {
       .from("briefing_shares")
       .select(`
         id, created_at, expires_at, revoked_at, scope, view_count, last_viewed_at,
-        script_id, job_id,
-        briefing_scripts (title, script_json->>segments_count)
+        script_id, job_id, include_transcript, allow_action_cards,
+        briefing_scripts (title, script_json)
       `)
       .eq("user_id", auth.user_id)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    return new Response(JSON.stringify({ shares: shares || [] }), { 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    // segments_count lives inside script_metadata; compute it in JS
+    const payload = (shares ?? []).map((s: any) => ({
+      id: s.id,
+      created_at: s.created_at,
+      expires_at: s.expires_at,
+      revoked_at: s.revoked_at,
+      scope: s.scope,
+      view_count: s.view_count ?? 0,
+      last_viewed_at: s.last_viewed_at,
+      script_id: s.script_id,
+      job_id: s.job_id,
+      include_transcript: s.include_transcript,
+      allow_action_cards: s.allow_action_cards,
+      title: s.briefing_scripts?.title ?? null,
+      segments_count: s.briefing_scripts?.script_json?.script_metadata?.total_estimated_segments ?? 0,
+    }));
+
+    return new Response(JSON.stringify({ shares: payload }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
 
   } catch (e: any) {

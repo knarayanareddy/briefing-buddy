@@ -31,19 +31,20 @@ export default function SharedBrief() {
       try {
         const res = await getSharedBriefing(token);
         setScriptData(res.script);
-        setExpiresAt(res.share.expires_at);
+        setExpiresAt(res.share?.expires_at ?? null);
 
-        if (res.render && res.render.status === 'complete' && res.render.segments) {
+        if (res.render && res.render.status === 'complete' && res.render.segments?.length) {
           setSegments(res.render.segments);
-        } else if (res.script.script_json.timeline_segments) {
+        } else if (res.script?.script_json?.timeline_segments) {
           // Render not ready or not scoped, but we can show the timeline
           const baseSegs = res.script.script_json.timeline_segments.map((seg: any, i: number) => ({
-            segment_id: i,
+            segment_id: seg.segment_id ?? i,
             dialogue: seg.dialogue,
             ui_action_card: seg.ui_action_card,
+            segment_type: seg.segment_type,
             status: res.render ? res.render.status : "unrendered",
-            avatar_video_url: null,
-            b_roll_image_url: null
+            video_url: null,
+            broll_url: null
           }));
           setSegments(baseSegs);
         }
